@@ -4,12 +4,12 @@
 
 ## 現在的階段
 
-目前是 **Phase 2：可安裝、可離線的本機 PWA**。
+目前是 **Phase 3A：本機提醒偏好設定**。
 
 已經有：
 
 - 手機優先的首次設定、今日、七日歷史與設定介面。
-- `UserProfile`、`Container`、`DrinkRecord` 三個核心型別。
+- `UserProfile`、`Container`、`DrinkRecord` 與 `ReminderSettings` 核心型別。
 - 集中式 reducer 與 IndexedDB 原子快照持久化。
 - 啟動 hydration、序列化寫入、格式驗證、失敗重試與清除資料流程。
 - 最近七個本地日曆日的自動保存期限。
@@ -18,10 +18,13 @@
 - App shell 靜態資源預快取、離線重新啟動與手動版本更新提示。
 - Chromium 安裝入口，以及 iOS Safari「加入主畫面」指引。
 - Public GitHub repository 與手動發布的 GitHub Pages HTTPS 網站。
+- 可開關的本機提醒偏好，以及每天開始、結束時間與 30／60／90 分鐘間隔。
+- 舊版 IndexedDB 快照缺少提醒欄位時的向後相容預設補值。
 
 還沒有：
 
 - Supabase 資料表、Edge Function、邀請碼或 Web Push。
+- Notification API 權限請求、系統通知或背景提醒。
 - 帳號、跨裝置同步、資料匯出或備份。
 - GitHub Actions、CI 或自動部署。
 
@@ -37,6 +40,14 @@
 6. 寫入失敗時保留目前畫面資料並提供重試，不用錯誤資料覆蓋 IndexedDB。
 
 示範紀錄以 `isDemo` 標記；關閉示範資料只移除該標記的紀錄。喝水紀錄的 `goalMlAtTime` 保存建立當下的目標，同一天使用第一筆紀錄的目標判斷是否達標。
+
+## 本機提醒偏好
+
+`ReminderSettings` 與其他 App 設定一起保存在 IndexedDB 快照，預設為關閉、每天 `07:00–23:00`、每 60 分鐘。使用者可選擇 30、60 或 90 分鐘間隔；第一版只接受同一天內開始時間早於結束時間的時段。
+
+關閉提醒只會把 `enabled` 設為 `false`，不會清除已保存的時段與間隔。Phase 3A 不呼叫 Notification API，也不送出實際通知；這份設定會在後續加入 Web Push 時直接沿用。
+
+既有 IndexedDB 仍維持 version 1。載入舊快照時，如果其他資料有效但缺少 `reminderSettings`，會自動補上預設值，不需要 object store migration。
 
 ## PWA 資源與更新流程
 
@@ -70,7 +81,7 @@
 
 ### 2. 手機 IndexedDB
 
-目前已保存 profile、containers、records 與 App 設定。完整飲水明細只留在使用者裝置，因此不需要帳號；離線時仍可直接使用。
+目前已保存 profile、containers、records、reminder settings 與 App 設定。完整飲水明細只留在使用者裝置，因此不需要帳號；離線時仍可直接使用。
 
 ### 3. Supabase
 
@@ -81,8 +92,9 @@
 1. **已完成：**互動介面與 IndexedDB 七日本機持久化。
 2. **已完成：**PWA 安裝、離線資源快取與版本更新提示。
 3. **已完成：**Public GitHub repository 與手動 GitHub Pages 部署設定。
-4. 加入邀請制 Supabase Auth 與最小提醒後端。
-5. 加入個人化 Web Push 與智慧提醒。
+4. **已完成：**本機提醒開關、時段與固定間隔偏好。
+5. 加入邀請制 Supabase Auth、最小提醒後端與真正的 Web Push。
+6. 依飲水進度加入智慧提醒。
 
 ## 為什麼仍保持簡單
 

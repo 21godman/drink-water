@@ -280,6 +280,77 @@ describe("App drinking flow", () => {
     expect(screen.getByRole("heading", { name: "今天也好好喝水" })).toBeTruthy();
   });
 
+  it("可設定、關閉並重新載入本機提醒偏好", async () => {
+    const firstRender = render(<App />);
+    await completeSetup();
+    fireEvent.click(screen.getByRole("button", { name: /設定/ }));
+
+    const toggle = screen.getByRole("checkbox", { name: "切換喝水提醒" });
+    expect(toggle.hasAttribute("checked")).toBe(false);
+    expect(screen.getByText(/目前保存：每天 07:00–23:00，每 60 分鐘/)).toBeTruthy();
+
+    fireEvent.click(toggle);
+    expect((toggle as HTMLInputElement).checked).toBe(true);
+    expect(screen.getByRole("radio", { name: "30 分鐘" })).toBeTruthy();
+    expect(screen.getByRole("radio", { name: "60 分鐘" })).toBeTruthy();
+    expect(screen.getByRole("radio", { name: "90 分鐘" })).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("每日開始時間"), {
+      target: { value: "08:00" },
+    });
+    fireEvent.change(screen.getByLabelText("每日結束時間"), {
+      target: { value: "22:00" },
+    });
+    fireEvent.click(screen.getByRole("radio", { name: "90 分鐘" }));
+    fireEvent.click(screen.getByRole("button", { name: "儲存提醒設定" }));
+    expect(screen.getByText("提醒設定已儲存")).toBeTruthy();
+
+    await waitFor(async () => {
+      expect((await loadAppState())?.reminderSettings).toEqual({
+        enabled: true,
+        startTime: "08:00",
+        endTime: "22:00",
+        intervalMinutes: 90,
+      });
+    });
+
+    fireEvent.click(toggle);
+    expect(screen.getByText(/目前保存：每天 08:00–22:00，每 90 分鐘/)).toBeTruthy();
+    await waitFor(async () => {
+      expect((await loadAppState())?.reminderSettings.enabled).toBe(false);
+    });
+    firstRender.unmount();
+
+    render(<App />);
+    await screen.findByRole("heading", { name: "今天也好好喝水" });
+    fireEvent.click(screen.getByRole("button", { name: /設定/ }));
+    expect((screen.getByRole("checkbox", { name: "切換喝水提醒" }) as HTMLInputElement).checked).toBe(false);
+    expect(screen.getByText(/目前保存：每天 08:00–22:00，每 90 分鐘/)).toBeTruthy();
+  });
+
+  it("拒絕相同、反向與空白的提醒時間", async () => {
+    render(<App />);
+    await completeSetup();
+    fireEvent.click(screen.getByRole("button", { name: /設定/ }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "切換喝水提醒" }));
+
+    const start = screen.getByLabelText("每日開始時間");
+    const end = screen.getByLabelText("每日結束時間");
+    const save = screen.getByRole("button", { name: "儲存提醒設定" });
+
+    fireEvent.change(start, { target: { value: "23:00" } });
+    fireEvent.change(end, { target: { value: "23:00" } });
+    fireEvent.click(save);
+    expect(screen.getByRole("alert").textContent).toContain("結束時間必須晚於開始時間");
+
+    fireEvent.change(end, { target: { value: "07:00" } });
+    fireEvent.click(save);
+    expect(screen.getByRole("alert").textContent).toContain("不能跨越午夜");
+
+    fireEvent.change(start, { target: { value: "" } });
+    fireEvent.click(save);
+    expect(screen.getByRole("alert").textContent).toContain("結束時間必須晚於開始時間");
+  });
+
   it("最後一個容器不可刪除，新增第二個後即可刪除", async () => {
     render(<App />);
     await completeSetup();

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   appReducer,
   createDemoRecords,
+  defaultReminderSettings,
   getDailyGoal,
   initialState,
 } from "../src/appState";
@@ -78,9 +79,36 @@ describe("hydration state", () => {
       containers: [{ id: "bottle", name: "水壺", volumeMl: 600 }],
       records: [],
       demoEnabled: false,
+      reminderSettings: defaultReminderSettings,
     };
 
     expect(appReducer(initialState, { type: "hydrate", state: saved })).toBe(saved);
     expect(appReducer(saved, { type: "reset" })).toBe(initialState);
+  });
+
+  it("更新提醒設定並在關閉時保留時段與間隔", () => {
+    const configured = appReducer(initialState, {
+      type: "updateReminderSettings",
+      settings: {
+        enabled: true,
+        startTime: "08:00",
+        endTime: "22:00",
+        intervalMinutes: 90,
+      },
+    });
+    const disabled = appReducer(configured, {
+      type: "updateReminderSettings",
+      settings: { ...configured.reminderSettings, enabled: false },
+    });
+
+    expect(disabled.reminderSettings).toEqual({
+      enabled: false,
+      startTime: "08:00",
+      endTime: "22:00",
+      intervalMinutes: 90,
+    });
+    expect(appReducer(disabled, { type: "reset" }).reminderSettings).toEqual(
+      defaultReminderSettings,
+    );
   });
 });

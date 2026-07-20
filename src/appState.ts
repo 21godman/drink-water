@@ -2,8 +2,16 @@ import type {
   AppAction,
   AppState,
   DrinkRecord,
+  ReminderSettings,
   UserProfile,
 } from "./types";
+
+export const defaultReminderSettings: ReminderSettings = {
+  enabled: false,
+  startTime: "07:00",
+  endTime: "23:00",
+  intervalMinutes: 60,
+};
 
 export const initialState: AppState = {
   isOnboarded: false,
@@ -11,6 +19,7 @@ export const initialState: AppState = {
   containers: [],
   records: [],
   demoEnabled: false,
+  reminderSettings: defaultReminderSettings,
 };
 
 export function getDailyGoal(profile: UserProfile): number {
@@ -138,6 +147,8 @@ export function appReducer(state: AppState, action: AppAction): AppState {
             ]
           : state.records.filter((record) => !record.isDemo),
       };
+    case "updateReminderSettings":
+      return { ...state, reminderSettings: action.settings };
     case "hydrate":
       return action.state;
     case "reset":

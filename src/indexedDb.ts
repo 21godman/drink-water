@@ -1,4 +1,11 @@
-import type { AppState, Container, DrinkRecord, UserProfile } from "./types";
+import { defaultReminderSettings } from "./appState";
+import type {
+  AppState,
+  Container,
+  DrinkRecord,
+  ReminderSettings,
+  UserProfile,
+} from "./types";
 
 const DATABASE_NAME = "drink-water";
 const DATABASE_VERSION = 1;
@@ -7,8 +14,10 @@ const STATE_KEY = "current";
 
 type StoredState = {
   key: typeof STATE_KEY;
-  value: AppState;
+  value: unknown;
 };
+
+type AppStateWithoutReminders = Omit<AppState, "reminderSettings">;
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -52,7 +61,29 @@ function isDrinkRecord(value: unknown): value is DrinkRecord {
   );
 }
 
-export function isAppState(value: unknown): value is AppState {
+function isTime(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value)
+  );
+}
+
+function isReminderSettings(value: unknown): value is ReminderSettings {
+  if (!isObject(value)) return false;
+  return (
+    typeof value.enabled === "boolean" &&
+    isTime(value.startTime) &&
+    isTime(value.endTime) &&
+    value.startTime < value.endTime &&
+    (value.intervalMinutes === 30 ||
+      value.intervalMinutes === 60 ||
+      value.intervalMinutes === 90)
+  );
+}
+
+function isAppStateWithoutReminders(
+  value: unknown,
+): value is AppStateWithoutReminders {
   if (!isObject(value)) return false;
   return (
     typeof value.isOnboarded === "boolean" &&
@@ -64,6 +95,22 @@ export function isAppState(value: unknown): value is AppState {
     typeof value.demoEnabled === "boolean" &&
     (!value.isOnboarded || (value.profile !== null && value.containers.length > 0))
   );
+}
+
+export function isAppState(value: unknown): value is AppState {
+  if (!isAppStateWithoutReminders(value)) return false;
+  return (
+    "reminderSettings" in value &&
+    isReminderSettings(value.reminderSettings)
+  );
+}
+
+function normalizeAppState(value: unknown): AppState | null {
+  if (!isAppStateWithoutReminders(value)) return null;
+  if (!("reminderSettings" in value)) {
+    return { ...value, reminderSettings: defaultReminderSettings };
+  }
+  return isReminderSettings(value.reminderSettings) ? value as AppState : null;
 }
 
 export function pruneExpiredRecords(
@@ -118,13 +165,14 @@ export async function loadAppState(): Promise<AppState | null> {
     await transactionComplete;
 
     if (!result) return null;
-    if (!isAppState(result.value)) {
+    const normalizedState = normalizeAppState(result.value);
+    if (!normalizedState) {
       throw new Error("本機資料格式不正確");
     }
 
     return {
-      ...result.value,
-      records: pruneExpiredRecords(result.value.records),
+      ...normalizedState,
+      records: pruneExpiredRecords(normalizedState.records),
     };
   } finally {
     database.close();

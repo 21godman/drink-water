@@ -8,6 +8,7 @@ import {
   pruneExpiredRecords,
   saveAppState,
 } from "../src/indexedDb";
+import { defaultReminderSettings } from "../src/appState";
 import type { AppState, DrinkRecord } from "../src/types";
 
 const savedState: AppState = {
@@ -21,6 +22,7 @@ const savedState: AppState = {
   containers: [{ id: "bottle", name: "水壺", volumeMl: 600 }],
   records: [],
   demoEnabled: false,
+  reminderSettings: defaultReminderSettings,
 };
 
 function record(id: string, consumedAt: string): DrinkRecord {
@@ -64,6 +66,37 @@ describe("IndexedDB persistence", () => {
   it("驗證 AppState 必須包含有效 profile 與容器", () => {
     expect(isAppState(savedState)).toBe(true);
     expect(isAppState({ ...savedState, containers: [] })).toBe(false);
+  });
+
+  it("載入舊格式時補上預設提醒設定且保留原資料", async () => {
+    const legacyState: Record<string, unknown> = { ...savedState };
+    delete legacyState.reminderSettings;
+    const database = await openDatabase();
+    const transaction = database.transaction("app-state", "readwrite");
+    transaction.objectStore("app-state").put({
+      key: "current",
+      value: legacyState,
+    });
+    await new Promise<void>((resolve) => {
+      transaction.oncomplete = () => resolve();
+    });
+    database.close();
+
+    expect(await loadAppState()).toEqual(savedState);
+  });
+
+  it("拒絕無效的提醒設定格式", () => {
+    expect(
+      isAppState({
+        ...savedState,
+        reminderSettings: {
+          enabled: true,
+          startTime: "7am",
+          endTime: "23:00",
+          intervalMinutes: 45,
+        },
+      }),
+    ).toBe(false);
   });
 });
 

@@ -1251,6 +1251,39 @@ input:focus-visible {
   margin-right: auto;
 }
 
+.reminder-card .settings-heading {
+  margin-bottom: 16px;
+}
+
+.reminder-interval-heading {
+  margin-top: 18px;
+  color: #547071;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.reminder-interval {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 8px;
+}
+
+.reminder-summary,
+.reminder-notice {
+  margin: 0;
+  padding: 13px 14px;
+  border-radius: 12px;
+  color: var(--muted);
+  background: var(--soft-surface);
+  font-size: 0.66rem;
+  line-height: 1.55;
+}
+
+.reminder-notice {
+  margin-top: 12px;
+  color: #537170;
+  background: rgba(222, 243, 237, 0.7);
+}
+
 .success-message {
   margin-right: auto;
   color: var(--primary);

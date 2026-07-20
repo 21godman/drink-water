@@ -23,12 +23,22 @@ export type DrinkRecord = {
   goalMlAtTime: number;
 };
 
+export type ReminderIntervalMinutes = 30 | 60 | 90;
+
+export type ReminderSettings = {
+  enabled: boolean;
+  startTime: string;
+  endTime: string;
+  intervalMinutes: ReminderIntervalMinutes;
+};
+
 export type AppState = {
   isOnboarded: boolean;
   profile: UserProfile | null;
   containers: Container[];
   records: DrinkRecord[];
   demoEnabled: boolean;
+  reminderSettings: ReminderSettings;
 };
 
 export type AppAction =
@@ -45,6 +55,7 @@ export type AppAction =
   | { type: "updateContainer"; container: Container }
   | { type: "deleteContainer"; id: string }
   | { type: "setDemoData"; enabled: boolean; records: DrinkRecord[] }
+  | { type: "updateReminderSettings"; settings: ReminderSettings }
   | { type: "hydrate"; state: AppState }
   | { type: "reset" };
 
