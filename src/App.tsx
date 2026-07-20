@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import HistoryView from "./HistoryView";
 import Onboarding from "./Onboarding";
+import PwaStatusBanner from "./PwaStatusBanner";
 import SettingsView from "./SettingsView";
 import TodayView from "./TodayView";
 import type { AppView } from "./types";
 import { usePersistentAppState } from "./usePersistentAppState";
+import { usePwaStatus } from "./usePwaStatus";
 
 const navigation: Array<{ id: AppView; label: string; icon: string }> = [
   { id: "today", label: "今日", icon: "⌂" },
@@ -13,6 +15,7 @@ const navigation: Array<{ id: AppView; label: string; icon: string }> = [
 ];
 
 function App() {
+  const pwa = usePwaStatus();
   const {
     state,
     dispatch,
@@ -61,12 +64,19 @@ function App() {
 
   return (
     <div className="app-frame">
-      {storageError ? (
-        <aside className="storage-banner" role="alert">
-          <span>本次變更尚未保存：{storageError}</span>
-          <button type="button" onClick={retrySave}>重試</button>
-        </aside>
-      ) : null}
+      <PwaStatusBanner
+        storageError={storageError}
+        retrySave={retrySave}
+        needRefresh={pwa.needRefresh}
+        applyUpdate={pwa.applyUpdate}
+        dismissUpdate={pwa.dismissUpdate}
+        isOnline={pwa.isOnline}
+        showInstallPrompt={state.isOnboarded && pwa.showInstallPrompt}
+        install={pwa.install}
+        dismissInstallPrompt={pwa.dismissInstallPrompt}
+        offlineReady={pwa.offlineReady}
+        dismissOfflineReady={pwa.dismissOfflineReady}
+      />
       <main className="app-content">
         {view === "today" ? (
           <TodayView state={state} dispatch={dispatch} />
@@ -77,6 +87,7 @@ function App() {
             state={state}
             dispatch={dispatch}
             onClearData={clearLocalData}
+            pwa={pwa}
           />
         ) : null}
       </main>

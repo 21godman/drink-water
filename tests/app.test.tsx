@@ -13,6 +13,7 @@ import { clearAppState, loadAppState, openDatabase } from "../src/indexedDb";
 
 afterEach(async () => {
   cleanup();
+  localStorage.clear();
   await new Promise((resolve) => setTimeout(resolve, 25));
   await clearAppState();
 });
@@ -130,6 +131,26 @@ describe("App onboarding and hydration", () => {
 });
 
 describe("App drinking flow", () => {
+  it("完成設定後顯示一次安裝提示，關閉後設定頁仍可安裝", async () => {
+    render(<App />);
+    await waitForOnboarding();
+    const installEvent = new Event("beforeinstallprompt", { cancelable: true });
+    Object.assign(installEvent, {
+      prompt: () => Promise.resolve(),
+      userChoice: Promise.resolve({ outcome: "accepted", platform: "web" }),
+    });
+    fireEvent(window, installEvent);
+
+    await completeSetup();
+    expect(screen.getByText(/安裝到手機，之後可從桌面直接開啟/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "稍後" }));
+    expect(screen.queryByText(/安裝到手機，之後可從桌面直接開啟/)).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /設定/ }));
+    expect(screen.getByRole("heading", { name: "安裝到手機" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "安裝到裝置" })).toBeTruthy();
+  });
+
   it("快速記水後可修改並刪除紀錄", async () => {
     render(<App />);
     await completeSetup();

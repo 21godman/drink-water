@@ -471,7 +471,7 @@ input:focus-visible {
   box-shadow: 0 0 60px rgba(23, 74, 72, 0.08);
 }
 
-.storage-banner {
+.system-banner {
   position: sticky;
   z-index: 30;
   top: 0;
@@ -481,19 +481,44 @@ input:focus-visible {
   gap: 16px;
   min-height: 48px;
   padding: 10px 22px;
-  color: #7f403a;
-  background: #fbe9e6;
   box-shadow: 0 5px 18px rgba(104, 51, 45, 0.08);
   font-size: 0.7rem;
 }
 
-.storage-banner button {
+.system-banner-error {
+  color: #7f403a;
+  background: #fbe9e6;
+}
+
+.system-banner-update {
+  color: #174e50;
+  background: #dff4ee;
+}
+
+.system-banner-offline {
+  color: #5f5550;
+  background: #f4eee8;
+}
+
+.system-banner-install,
+.system-banner-ready {
+  color: #174e50;
+  background: #e4f5f2;
+}
+
+.system-banner-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 7px;
+}
+
+.system-banner button {
   flex: 0 0 auto;
   min-height: 30px;
   padding: 0 10px;
-  border: 1px solid #e1aaa3;
+  border: 1px solid currentColor;
   border-radius: 8px;
-  color: #843f38;
+  color: inherit;
   background: white;
   font-size: 0.66rem;
   font-weight: 700;
@@ -1306,6 +1331,31 @@ input:focus-visible {
   line-height: 1.55;
 }
 
+.install-card .settings-heading {
+  margin-bottom: 16px;
+}
+
+.install-card-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 15px 16px;
+  border-radius: 14px;
+  background: var(--soft-surface);
+}
+
+.install-card-content p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.6;
+}
+
+.install-card-content .secondary-button {
+  flex: 0 0 auto;
+}
+
 .switch {
   position: relative;
   display: block;
@@ -1563,6 +1613,21 @@ input:focus-visible {
   }
 
   .settings-save-row .secondary-button {
+    width: 100%;
+  }
+
+  .system-banner {
+    gap: 10px;
+    padding: 10px 14px;
+  }
+
+  .install-card-content {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .install-card-content .secondary-button {
     width: 100%;
   }
 

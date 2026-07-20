@@ -1,12 +1,49 @@
 import { useEffect, useState, type Dispatch, type FormEvent } from "react";
 import { createDemoRecords, createId, getDailyGoal } from "./appState";
 import type { AppAction, AppState, Container, UserProfile } from "./types";
+import type { PwaStatus } from "./usePwaStatus";
 
 type SettingsViewProps = {
   state: AppState;
   dispatch: Dispatch<AppAction>;
   onClearData: () => Promise<void>;
+  pwa: Pick<PwaStatus, "canInstall" | "installMode" | "install">;
 };
+
+export function PwaInstallCard({
+  canInstall,
+  installMode,
+  install,
+}: SettingsViewProps["pwa"]) {
+  if (!canInstall) return null;
+
+  const nativeInstall = installMode === "native";
+  const description = nativeInstall
+    ? "安裝後可從手機桌面直接開啟，離線時也能使用。"
+    : installMode === "ios-safari"
+      ? "點 Safari 的分享按鈕，再選擇「加入主畫面」。"
+      : "請先用 Safari 開啟這個頁面，再從分享選單加入主畫面。";
+
+  return (
+    <section className="settings-card install-card" aria-labelledby="install-title">
+      <div className="settings-heading">
+        <span className="settings-icon" aria-hidden="true">⇩</span>
+        <div>
+          <h2 id="install-title">安裝到手機</h2>
+          <p>更快開啟，也能離線使用</p>
+        </div>
+      </div>
+      <div className="install-card-content">
+        <p>{description}</p>
+        {nativeInstall ? (
+          <button className="secondary-button" type="button" onClick={() => void install()}>
+            安裝到裝置
+          </button>
+        ) : null}
+      </div>
+    </section>
+  );
+}
 
 function ContainerDialog({
   container,
@@ -81,7 +118,7 @@ function ContainerDialog({
   );
 }
 
-export default function SettingsView({ state, dispatch, onClearData }: SettingsViewProps) {
+export default function SettingsView({ state, dispatch, onClearData, pwa }: SettingsViewProps) {
   const profile = state.profile!;
   const [height, setHeight] = useState(String(profile.heightCm));
   const [weight, setWeight] = useState(String(profile.weightKg));
@@ -162,6 +199,8 @@ export default function SettingsView({ state, dispatch, onClearData }: SettingsV
         </div>
         <p className="demo-note">關閉只會移除示範資料，不會影響你在本次使用中新增的紀錄。</p>
       </section>
+
+      <PwaInstallCard {...pwa} />
 
       <section className="settings-card data-card" aria-labelledby="local-data-title">
         <div className="settings-heading"><span className="settings-icon" aria-hidden="true">▤</span><div><h2 id="local-data-title">本機資料</h2><p>設定長期保留，喝水紀錄保留最近 7 天</p></div></div>

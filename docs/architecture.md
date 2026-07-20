@@ -4,7 +4,7 @@
 
 ## 現在的階段
 
-目前是 **Phase 1B：IndexedDB 本機 MVP**。
+目前是 **Phase 2：可安裝、可離線的本機 PWA**。
 
 已經有：
 
@@ -14,10 +14,12 @@
 - 啟動 hydration、序列化寫入、格式驗證、失敗重試與清除資料流程。
 - 最近七個本地日曆日的自動保存期限。
 - 每筆紀錄的歷史目標快照與原生 CSS／SVG 七日趨勢圖。
+- Web App Manifest、安裝圖示與 production Service Worker。
+- App shell 靜態資源預快取、離線重新啟動與手動版本更新提示。
+- Chromium 安裝入口，以及 iOS Safari「加入主畫面」指引。
 
 還沒有：
 
-- Web App Manifest、Service Worker 或完整離線啟動能力。
 - Supabase 資料表、Edge Function、邀請碼或 Web Push。
 - 帳號、跨裝置同步、資料匯出或備份。
 - GitHub remote 或部署設定。
@@ -35,6 +37,15 @@
 
 示範紀錄以 `isDemo` 標記；關閉示範資料只移除該標記的紀錄。喝水紀錄的 `goalMlAtTime` 保存建立當下的目標，同一天使用第一筆紀錄的目標判斷是否達標。
 
+## PWA 資源與更新流程
+
+1. Production build 產生 Manifest、Service Worker 與帶版本的靜態資源清單；開發模式不註冊 Service Worker。
+2. 首次線上開啟後，Service Worker 預先快取 App shell、樣式與圖示，之後可離線重新載入前端入口。
+3. 喝水資料仍只由 IndexedDB 管理，不會寫入 Cache Storage，也不會使用 localStorage 備份。
+4. localStorage 只保存「已關閉主動安裝提示」這個非關鍵 UI 決定。
+5. 新 Service Worker 下載完成後先等待；使用者選擇「立即更新」才啟用並重新載入頁面。
+6. 全域狀態提示依序處理 IndexedDB 保存錯誤、版本更新、離線與安裝，避免多個訊息同時競爭畫面。
+
 ## 七日保存規則
 
 七天是裝置本地時區的今天加前 6 個日曆日，而不是精確 168 小時。清理界線是今天往前第 6 天的 00:00；未來時間與更早時間都不能作為有效紀錄。
@@ -45,11 +56,11 @@
 
 ### 1. React PWA
 
-使用者看見與操作的 App。現在的元件、型別、reducer 和資料庫介面都會繼續沿用。
+使用者看見與操作的 App。現在已可安裝並離線啟動；元件、型別、reducer 和資料庫介面會繼續沿用。
 
 ### 2. 手機 IndexedDB
 
-目前已保存 profile、containers、records 與 App 設定。完整飲水明細只留在使用者裝置，因此不需要帳號，未來加入離線資源快取後也能在沒有網路時使用。
+目前已保存 profile、containers、records 與 App 設定。完整飲水明細只留在使用者裝置，因此不需要帳號；離線時仍可直接使用。
 
 ### 3. Supabase
 
@@ -58,7 +69,7 @@
 ## 開發順序
 
 1. **已完成：**互動介面與 IndexedDB 七日本機持久化。
-2. 加入 PWA 安裝與離線資源快取。
+2. **已完成：**PWA 安裝、離線資源快取與版本更新提示。
 3. 加入最小 Supabase 後端。
 4. 加入一次性邀請碼與智慧提醒。
 5. 建立 private GitHub repository 並選擇部署平台。

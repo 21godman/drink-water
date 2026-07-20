@@ -2,7 +2,7 @@
 
 一個手機優先、刻意保持簡單的本機喝水紀錄與提醒 PWA 專案。
 
-目前是 **Phase 1B：IndexedDB 本機 MVP**。可以完成首次設定、快速記水、修改紀錄、查看七日趨勢，以及管理個人目標與常用容器。資料保存在瀏覽器的 IndexedDB，重新整理或重新開啟後仍然存在。
+目前是 **Phase 2：可安裝、可離線的本機 PWA**。可以完成首次設定、快速記水、修改紀錄、查看七日趨勢，以及管理個人目標與常用容器。資料保存在瀏覽器的 IndexedDB；App 在線開啟一次後，也能安裝到裝置並在離線時重新啟動。
 
 ## 目前可以做什麼
 
@@ -13,6 +13,8 @@
 - 查看最近七天的日均容量、達標天數與趨勢。
 - 開關固定產生的七日示範資料；關閉時不會刪除真實紀錄。
 - 清除全部本機設定與紀錄，重新開始。
+- 在支援的瀏覽器安裝到手機或電腦，並離線重新開啟。
+- 在 App 內查看離線狀態，並自行決定何時套用已下載的新版本。
 
 ## 七日保存規則
 
@@ -23,7 +25,7 @@
 ## 目前刻意不做什麼
 
 - 不連接 Supabase，也沒有帳號、邀請碼或跨裝置同步。
-- 不加入 Web App Manifest、Service Worker 或通知。
+- 不加入通知、背景提醒或 Web Push。
 - 不使用 localStorage 作為第二份備援資料。
 - 不加入路由、狀態管理或正式環境的 IndexedDB 套件。
 
@@ -32,6 +34,7 @@
 - React 19＋TypeScript：畫面、型別與 reducer 狀態管理。
 - 原生 IndexedDB：本機資料保存與七日清理。
 - Vite：本機開發與 production build。
+- Vite PWA＋Workbox：Manifest、Service Worker、離線資源預快取與版本更新提示。
 - 原生 CSS／SVG：響應式介面與七日趨勢圖。
 - Vitest＋Testing Library＋fake-indexeddb：資料規則、資料庫與操作流程測試。
 - ESLint：程式碼檢查。
@@ -47,6 +50,13 @@ npm run dev
 
 終端會顯示本機網址。首次開啟時，請先輸入身高、體重與至少一個容器。
 
+開發模式刻意不註冊 Service Worker。要驗證安裝、離線與更新流程，請使用 production preview：
+
+```bash
+npm run build
+npm run preview
+```
+
 ## 驗證
 
 ```bash
@@ -60,6 +70,8 @@ npm run build
 ```text
 src/
 ├── App.tsx                    App shell、載入與錯誤狀態
+├── usePwaStatus.ts           安裝、離線與版本更新狀態
+├── PwaStatusBanner.tsx       全域 PWA 與保存狀態提示
 ├── usePersistentAppState.ts  hydration 與序列化寫入佇列
 ├── indexedDb.ts              IndexedDB、驗證與七日清理
 ├── appState.ts               reducer、目標公式與日期工具
