@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="水滴">
+  <defs>
+    <linearGradient id="water" x1="12" y1="10" x2="52" y2="55" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#67cfe3"/>
+      <stop offset="1" stop-color="#167d7f"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="#f6faf9"/>
+  <path d="M32 9C25 19 16 29 16 40a16 16 0 0 0 32 0C48 29 39 19 32 9Z" fill="url(#water)"/>
+  <path d="M24 42c1 5 5 8 10 8" fill="none" stroke="#fff" stroke-linecap="round" stroke-width="4" opacity=".8"/>
+</svg>
