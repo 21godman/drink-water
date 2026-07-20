@@ -17,12 +17,13 @@
 - Web App Manifest、安裝圖示與 production Service Worker。
 - App shell 靜態資源預快取、離線重新啟動與手動版本更新提示。
 - Chromium 安裝入口，以及 iOS Safari「加入主畫面」指引。
+- Public GitHub repository 與手動發布的 GitHub Pages HTTPS 網站。
 
 還沒有：
 
 - Supabase 資料表、Edge Function、邀請碼或 Web Push。
 - 帳號、跨裝置同步、資料匯出或備份。
-- GitHub remote 或部署設定。
+- GitHub Actions、CI 或自動部署。
 
 ## 本機資料流
 
@@ -45,6 +46,15 @@
 4. localStorage 只保存「已關閉主動安裝提示」這個非關鍵 UI 決定。
 5. 新 Service Worker 下載完成後先等待；使用者選擇「立即更新」才啟用並重新載入頁面。
 6. 全域狀態提示依序處理 IndexedDB 保存錯誤、版本更新、離線與安裝，避免多個訊息同時競爭畫面。
+
+## GitHub Pages 發布與公開安全
+
+1. 原始碼放在 public `21godman/drink-water` repository，網站由 `gh-pages` branch 提供。
+2. 發布只在本機手動執行；指令會先完成 lint、測試與 `/drink-water/` base 的 production build，再推送 `dist/`。
+3. 本機開發與一般 build 維持 `/` base，避免 GitHub Pages 子路徑影響本機流程。
+4. 網站使用 robots metadata 降低搜尋曝光，但所有前端程式與 `pages.dev` 類似的公開網站一樣，都不能保存任何秘密。
+5. 未來只有 Supabase URL、publishable key 與 VAPID public key 可進入前端；secret／service-role key、VAPID private key 與管理憑證只能存在受控後端。
+6. Supabase Auth 採管理員邀請與個別 Email 密碼；公開註冊與匿名登入關閉，Database 以 RLS 限制每位使用者只能存取自己的 rows。
 
 ## 七日保存規則
 
@@ -70,9 +80,9 @@
 
 1. **已完成：**互動介面與 IndexedDB 七日本機持久化。
 2. **已完成：**PWA 安裝、離線資源快取與版本更新提示。
-3. 加入最小 Supabase 後端。
-4. 加入一次性邀請碼與智慧提醒。
-5. 建立 private GitHub repository 並選擇部署平台。
+3. **已完成：**Public GitHub repository 與手動 GitHub Pages 部署設定。
+4. 加入邀請制 Supabase Auth 與最小提醒後端。
+5. 加入個人化 Web Push 與智慧提醒。
 
 ## 為什麼仍保持簡單
 

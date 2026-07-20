@@ -6,9 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:pages": "VITE_BASE_PATH=/drink-water/ npm run build",
     "preview": "vite preview",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "predeploy": "npm run lint && npm run test && npm run build:pages",
+    "deploy": "gh-pages -d dist"
   },
   "dependencies": {
     "react": "19.2.7",
@@ -23,6 +26,7 @@
     "@vitejs/plugin-react": "6.0.3",
     "eslint": "9.39.4",
     "fake-indexeddb": "^6.2.5",
+    "gh-pages": "^6.3.0",
     "globals": "17.7.0",
     "jsdom": "28.1.0",
     "typescript": "5.9.3",
