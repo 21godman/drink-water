@@ -1,6 +1,7 @@
 import { useMemo, useState, type Dispatch, type FormEvent } from "react";
 import {
   createId,
+  getRetentionBounds,
   getDailyGoal,
   isSameLocalDay,
   toDateTimeLocal,
@@ -36,6 +37,9 @@ function RecordDialog({
   const [amount, setAmount] = useState(String(record.amountMl));
   const [consumedAt, setConsumedAt] = useState(toDateTimeLocal(record.consumedAt));
   const [error, setError] = useState("");
+  const retentionBounds = getRetentionBounds();
+  const minDateTime = toDateTimeLocal(retentionBounds.earliest.toISOString());
+  const maxDateTime = toDateTimeLocal(retentionBounds.latest.toISOString());
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -43,6 +47,13 @@ function RecordDialog({
     const parsedDate = new Date(consumedAt);
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0 || Number.isNaN(parsedDate.getTime())) {
       setError("請輸入有效的容量與時間。");
+      return;
+    }
+    if (
+      parsedDate.getTime() < retentionBounds.earliest.getTime() ||
+      parsedDate.getTime() > retentionBounds.latest.getTime()
+    ) {
+      setError("飲用時間只能選擇今天或前 6 天，且不能晚於現在。");
       return;
     }
 
@@ -71,7 +82,7 @@ function RecordDialog({
           <button className="icon-button" type="button" onClick={onClose} aria-label="關閉編輯紀錄">×</button>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <label className="field">
             <span>飲水量</span>
             <span className="input-with-unit">
@@ -81,7 +92,7 @@ function RecordDialog({
           </label>
           <label className="field">
             <span>飲用時間</span>
-            <input type="datetime-local" value={consumedAt} onChange={(event) => setConsumedAt(event.target.value)} />
+            <input min={minDateTime} max={maxDateTime} type="datetime-local" value={consumedAt} onChange={(event) => setConsumedAt(event.target.value)} />
           </label>
           {error ? <p className="form-error" role="alert">{error}</p> : null}
           <div className="dialog-actions">
@@ -185,6 +196,7 @@ export default function TodayView({ state, dispatch }: TodayViewProps) {
                     containerId: container.id,
                     containerName: container.name,
                     isDemo: false,
+                    goalMlAtTime: dailyGoal,
                   },
                 })
               }

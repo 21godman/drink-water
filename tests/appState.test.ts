@@ -27,7 +27,7 @@ describe("hydration state", () => {
     ).toBe(2800);
   });
 
-  it("關閉示範資料只移除示範紀錄", () => {
+  it("關閉示範資料只移除六天示範紀錄", () => {
     const userRecord: DrinkRecord = {
       id: "user-record",
       amountMl: 600,
@@ -35,6 +35,7 @@ describe("hydration state", () => {
       containerId: "bottle",
       containerName: "水壺",
       isDemo: false,
+      goalMlAtTime: 2350,
     };
     const state: AppState = {
       ...initialState,
@@ -52,7 +53,7 @@ describe("hydration state", () => {
       records: [],
     });
 
-    expect(enabled.records).toHaveLength(30);
+    expect(enabled.records).toHaveLength(7);
     expect(disabled.records).toEqual([userRecord]);
   });
 
@@ -63,5 +64,23 @@ describe("hydration state", () => {
     };
 
     expect(appReducer(state, { type: "deleteContainer", id: "only" })).toBe(state);
+  });
+
+  it("可從 IndexedDB hydrate 或重置狀態", () => {
+    const saved: AppState = {
+      isOnboarded: true,
+      profile: {
+        heightCm: 170,
+        weightKg: 65,
+        goalMode: "formula",
+        customGoalMl: null,
+      },
+      containers: [{ id: "bottle", name: "水壺", volumeMl: 600 }],
+      records: [],
+      demoEnabled: false,
+    };
+
+    expect(appReducer(initialState, { type: "hydrate", state: saved })).toBe(saved);
+    expect(appReducer(saved, { type: "reset" })).toBe(initialState);
   });
 });

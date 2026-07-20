@@ -405,6 +405,63 @@ input:focus-visible {
 
 /* App frame */
 
+.startup-state {
+  display: grid;
+  min-height: 100vh;
+  padding: 28px;
+  text-align: center;
+  place-content: center;
+  justify-items: center;
+}
+
+.startup-state p {
+  max-width: 360px;
+  margin: 18px 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.65;
+}
+
+.startup-drop {
+  display: grid;
+  width: 58px;
+  height: 66px;
+  border-radius: 54% 54% 58% 58% / 70% 70% 42% 42%;
+  color: white;
+  background: linear-gradient(145deg, #71d9df, #16847f);
+  box-shadow: 0 14px 32px rgba(20, 127, 123, 0.22);
+  font-size: 0.82rem;
+  font-weight: 700;
+  animation: loading-drop 1.4s ease-in-out infinite;
+  place-items: center;
+}
+
+.startup-error h1 {
+  margin: 18px 0 0;
+  font-size: 1.5rem;
+  letter-spacing: -0.04em;
+}
+
+.startup-error .primary-button {
+  margin-top: 24px;
+}
+
+.startup-icon {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  color: var(--danger);
+  background: #f9e8e5;
+  font-weight: 700;
+  place-items: center;
+}
+
+@keyframes loading-drop {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
 .app-frame {
   position: relative;
   width: min(100%, 780px);
@@ -412,6 +469,35 @@ input:focus-visible {
   margin: 0 auto;
   background: #f7fbfa;
   box-shadow: 0 0 60px rgba(23, 74, 72, 0.08);
+}
+
+.storage-banner {
+  position: sticky;
+  z-index: 30;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 48px;
+  padding: 10px 22px;
+  color: #7f403a;
+  background: #fbe9e6;
+  box-shadow: 0 5px 18px rgba(104, 51, 45, 0.08);
+  font-size: 0.7rem;
+}
+
+.storage-banner button {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid #e1aaa3;
+  border-radius: 8px;
+  color: #843f38;
+  background: white;
+  font-size: 0.66rem;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .app-content {
@@ -978,6 +1064,15 @@ input:focus-visible {
   overflow: visible;
 }
 
+.seven-day-chart {
+  width: 100%;
+  min-width: 0;
+}
+
+.seven-day-chart text {
+  font-size: 12px;
+}
+
 .target-line {
   stroke: #8fcfc9;
   stroke-width: 1;
@@ -1266,6 +1361,68 @@ input:focus-visible {
   border-radius: 18px;
   color: #537170;
   background: rgba(222, 243, 237, 0.7);
+}
+
+.data-card .settings-heading {
+  margin-bottom: 16px;
+}
+
+.data-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.65;
+}
+
+.clear-data-button {
+  width: 100%;
+  min-height: 46px;
+  margin-top: 18px;
+  border: 1px solid #ebc5c0;
+  border-radius: 13px;
+  color: var(--danger);
+  background: #fffafa;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.clear-data-button:hover {
+  background: #fdf0ee;
+}
+
+.danger-overline {
+  color: var(--danger);
+}
+
+.confirmation-copy {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.7;
+}
+
+.confirmation-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.confirm-danger-button {
+  min-height: 48px;
+  border: 0;
+  border-radius: 14px;
+  color: white;
+  background: var(--danger);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.confirm-danger-button:disabled,
+.confirmation-actions button:disabled {
+  opacity: 0.6;
+  cursor: wait;
 }
 
 .prototype-notice > span {

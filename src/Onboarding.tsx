@@ -78,7 +78,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
         <div className="onboarding-intro">
           <p className="overline">第一次設定</p>
           <h1 id="onboarding-title">找到適合你的<br />每日喝水節奏</h1>
-          <p>不用帳號，花一分鐘完成設定。這個原型重新整理後會重置資料。</p>
+          <p>不用帳號，花一分鐘完成設定。資料只會保存在這台裝置的瀏覽器。</p>
         </div>
 
         <form onSubmit={handleSubmit} noValidate>

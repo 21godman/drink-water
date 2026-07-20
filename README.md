@@ -1,8 +1,8 @@
 # drink-water
 
-一個手機優先、刻意保持簡單的喝水紀錄與提醒 PWA 專案。
+一個手機優先、刻意保持簡單的本機喝水紀錄與提醒 PWA 專案。
 
-目前是 **Phase 1A：互動介面原型**。可以完成首次設定、快速記水、修改紀錄、查看 30 天趨勢，以及管理個人目標與常用容器。資料只保存在 React 記憶體，重新整理頁面後會重置。
+目前是 **Phase 1B：IndexedDB 本機 MVP**。可以完成首次設定、快速記水、修改紀錄、查看七日趨勢，以及管理個人目標與常用容器。資料保存在瀏覽器的 IndexedDB，重新整理或重新開啟後仍然存在。
 
 ## 目前可以做什麼
 
@@ -10,24 +10,30 @@
 - 改用自訂的每日飲水目標。
 - 建立自己的常用容器並快速記錄喝水。
 - 修改或刪除今天的單筆紀錄。
-- 查看最近 30 天趨勢、日均容量、達標天數與連續天數。
-- 開關固定產生的示範資料；關閉時不會刪除本次操作新增的紀錄。
+- 查看最近七天的日均容量、達標天數與趨勢。
+- 開關固定產生的七日示範資料；關閉時不會刪除真實紀錄。
+- 清除全部本機設定與紀錄，重新開始。
+
+## 七日保存規則
+
+喝水紀錄只保留使用者裝置本地時區的「今天加前 6 個日曆日」。App 啟動與每次保存時都會永久移除更早的紀錄；個人設定與常用容器不受這個期限影響。
+
+每筆紀錄會保存當時的每日目標，因此日後修改身高、體重或自訂目標，不會改變過去的達標判斷。
 
 ## 目前刻意不做什麼
 
-- 不把資料寫入 IndexedDB、localStorage 或雲端。
-- 不加入 Web App Manifest、Service Worker 或通知。
 - 不連接 Supabase，也沒有帳號、邀請碼或跨裝置同步。
-- 不加入路由、狀態管理或圖表套件。
-
-這一階段的目的，是先確認資訊架構、視覺和完整操作流程，再把通過驗證的資料模型接到 IndexedDB。
+- 不加入 Web App Manifest、Service Worker 或通知。
+- 不使用 localStorage 作為第二份備援資料。
+- 不加入路由、狀態管理或正式環境的 IndexedDB 套件。
 
 ## 技術選擇
 
 - React 19＋TypeScript：畫面、型別與 reducer 狀態管理。
+- 原生 IndexedDB：本機資料保存與七日清理。
 - Vite：本機開發與 production build。
-- 原生 CSS／SVG：響應式介面與 30 天趨勢圖。
-- Vitest＋Testing Library：資料規則與主要操作流程測試。
+- 原生 CSS／SVG：響應式介面與七日趨勢圖。
+- Vitest＋Testing Library＋fake-indexeddb：資料規則、資料庫與操作流程測試。
 - ESLint：程式碼檢查。
 
 ## 本機啟動
@@ -53,14 +59,15 @@ npm run build
 
 ```text
 src/
-├── App.tsx             App shell 與底部三分頁導覽
-├── Onboarding.tsx      首次設定流程
-├── TodayView.tsx       今日進度、快速記水與紀錄更正
-├── HistoryView.tsx     30 天統計與 SVG 趨勢圖
-├── SettingsView.tsx    個人目標、容器與示範資料
-├── appState.ts         reducer、目標公式與日期工具
-├── types.ts            共用資料型別
-└── styles.css          手機優先的全域視覺樣式
+├── App.tsx                    App shell、載入與錯誤狀態
+├── usePersistentAppState.ts  hydration 與序列化寫入佇列
+├── indexedDb.ts              IndexedDB、驗證與七日清理
+├── appState.ts               reducer、目標公式與日期工具
+├── Onboarding.tsx            首次設定流程
+├── TodayView.tsx              今日進度、快速記水與紀錄更正
+├── HistoryView.tsx            七日統計與 SVG 趨勢圖
+├── SettingsView.tsx           個人目標、容器、示範與資料清除
+└── types.ts                   共用資料型別
 ```
 
 完整的階段規劃與資料流請閱讀 [`docs/architecture.md`](docs/architecture.md)。

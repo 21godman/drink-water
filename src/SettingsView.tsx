@@ -5,6 +5,7 @@ import type { AppAction, AppState, Container, UserProfile } from "./types";
 type SettingsViewProps = {
   state: AppState;
   dispatch: Dispatch<AppAction>;
+  onClearData: () => Promise<void>;
 };
 
 function ContainerDialog({
@@ -80,7 +81,7 @@ function ContainerDialog({
   );
 }
 
-export default function SettingsView({ state, dispatch }: SettingsViewProps) {
+export default function SettingsView({ state, dispatch, onClearData }: SettingsViewProps) {
   const profile = state.profile!;
   const [height, setHeight] = useState(String(profile.heightCm));
   const [weight, setWeight] = useState(String(profile.weightKg));
@@ -88,6 +89,9 @@ export default function SettingsView({ state, dispatch }: SettingsViewProps) {
   const [customGoal, setCustomGoal] = useState(profile.customGoalMl ? String(profile.customGoalMl) : "");
   const [profileMessage, setProfileMessage] = useState("");
   const [containerDialog, setContainerDialog] = useState<Container | "new" | null>(null);
+  const [showClearDialog, setShowClearDialog] = useState(false);
+  const [clearError, setClearError] = useState("");
+  const [isClearing, setIsClearing] = useState(false);
 
   useEffect(() => {
     setHeight(String(profile.heightCm));
@@ -153,15 +157,54 @@ export default function SettingsView({ state, dispatch }: SettingsViewProps) {
       </section>
 
       <section className="settings-card demo-card" aria-labelledby="demo-title">
-        <div className="settings-heading"><span className="settings-icon" aria-hidden="true">⌁</span><div><h2 id="demo-title">30 天示範資料</h2><p>預覽有歷史紀錄時的趨勢圖</p></div>
-          <label className="switch"><input aria-label="切換 30 天示範資料" type="checkbox" checked={state.demoEnabled} onChange={(event) => dispatch({ type: "setDemoData", enabled: event.target.checked, records: event.target.checked ? createDemoRecords(getDailyGoal(profile)) : [] })} /><span aria-hidden="true" /></label>
+        <div className="settings-heading"><span className="settings-icon" aria-hidden="true">⌁</span><div><h2 id="demo-title">7 天示範資料</h2><p>預覽有歷史紀錄時的趨勢圖</p></div>
+          <label className="switch"><input aria-label="切換 7 天示範資料" type="checkbox" checked={state.demoEnabled} onChange={(event) => dispatch({ type: "setDemoData", enabled: event.target.checked, records: event.target.checked ? createDemoRecords(getDailyGoal(profile)) : [] })} /><span aria-hidden="true" /></label>
         </div>
         <p className="demo-note">關閉只會移除示範資料，不會影響你在本次使用中新增的紀錄。</p>
       </section>
 
-      <aside className="prototype-notice"><span aria-hidden="true">i</span><p><strong>這是互動介面原型</strong>資料只保留在目前畫面中，重新整理後會重置。IndexedDB 與離線能力會在下一階段加入。</p></aside>
+      <section className="settings-card data-card" aria-labelledby="local-data-title">
+        <div className="settings-heading"><span className="settings-icon" aria-hidden="true">▤</span><div><h2 id="local-data-title">本機資料</h2><p>設定長期保留，喝水紀錄保留最近 7 天</p></div></div>
+        <p className="data-note">資料只存在這台裝置的瀏覽器，不會上傳雲端。清除網站資料或更換裝置可能造成紀錄遺失。</p>
+        <button className="clear-data-button" type="button" onClick={() => setShowClearDialog(true)}>清除全部本機資料</button>
+      </section>
 
       {containerDialog ? <ContainerDialog container={containerDialog === "new" ? null : containerDialog} canDelete={state.containers.length > 1} dispatch={dispatch} onClose={() => setContainerDialog(null)} /> : null}
+      {showClearDialog ? (
+        <div className="dialog-backdrop" role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget && !isClearing) setShowClearDialog(false);
+        }}>
+          <section className="bottom-sheet confirmation-sheet" role="alertdialog" aria-modal="true" aria-labelledby="clear-data-title" aria-describedby="clear-data-description">
+            <div className="sheet-handle" aria-hidden="true" />
+            <div className="sheet-heading">
+              <div><p className="overline danger-overline">無法復原</p><h2 id="clear-data-title">清除全部本機資料？</h2></div>
+              <button className="icon-button" disabled={isClearing} type="button" onClick={() => setShowClearDialog(false)} aria-label="關閉清除資料確認">×</button>
+            </div>
+            <p id="clear-data-description" className="confirmation-copy">身體資料、每日目標、所有容器與最近 7 天的喝水紀錄都會永久刪除。</p>
+            {clearError ? <p className="form-error" role="alert">{clearError}</p> : null}
+            <div className="confirmation-actions">
+              <button className="secondary-button" disabled={isClearing} type="button" onClick={() => setShowClearDialog(false)}>取消</button>
+              <button
+                className="confirm-danger-button"
+                disabled={isClearing}
+                type="button"
+                onClick={async () => {
+                  setIsClearing(true);
+                  setClearError("");
+                  try {
+                    await onClearData();
+                    setShowClearDialog(false);
+                  } catch (error) {
+                    setClearError(error instanceof Error ? error.message : "無法清除本機資料");
+                  } finally {
+                    setIsClearing(false);
+                  }
+                }}
+              >{isClearing ? "正在清除…" : "確認清除"}</button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -20,6 +20,7 @@ export type DrinkRecord = {
   containerId: string | null;
   containerName: string;
   isDemo: boolean;
+  goalMlAtTime: number;
 };
 
 export type AppState = {
@@ -43,6 +44,8 @@ export type AppAction =
   | { type: "addContainer"; container: Container }
   | { type: "updateContainer"; container: Container }
   | { type: "deleteContainer"; id: string }
-  | { type: "setDemoData"; enabled: boolean; records: DrinkRecord[] };
+  | { type: "setDemoData"; enabled: boolean; records: DrinkRecord[] }
+  | { type: "hydrate"; state: AppState }
+  | { type: "reset" };
 
 export type AppView = "today" | "history" | "settings";

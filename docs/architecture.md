@@ -1,61 +1,68 @@
 # drink-water 架構說明
 
-這份文件說明目前互動原型的邊界，以及未來如何沿用同一份資料模型逐步加入本機儲存、PWA 與提醒後端。
+這份文件說明目前本機 MVP 的資料流，以及未來如何在不把完整喝水明細上傳雲端的前提下加入 PWA 與提醒後端。
 
 ## 現在的階段
 
-目前是 **Phase 1A：互動介面原型**。
+目前是 **Phase 1B：IndexedDB 本機 MVP**。
 
 已經有：
 
-- 手機優先的首次設定、今日、歷史與設定介面。
+- 手機優先的首次設定、今日、七日歷史與設定介面。
 - `UserProfile`、`Container`、`DrinkRecord` 三個核心型別。
-- 集中式 reducer，處理喝水紀錄、個人目標、容器和示範資料。
-- 公式目標 `(身高 cm＋體重 kg) × 10` 與手動覆寫模式。
-- 原生 CSS／SVG 的 30 天趨勢圖。
+- 集中式 reducer 與 IndexedDB 原子快照持久化。
+- 啟動 hydration、序列化寫入、格式驗證、失敗重試與清除資料流程。
+- 最近七個本地日曆日的自動保存期限。
+- 每筆紀錄的歷史目標快照與原生 CSS／SVG 七日趨勢圖。
 
 還沒有：
 
-- IndexedDB 或任何重新整理後仍存在的資料。
-- Web App Manifest、Service Worker 或離線快取。
+- Web App Manifest、Service Worker 或完整離線啟動能力。
 - Supabase 資料表、Edge Function、邀請碼或 Web Push。
+- 帳號、跨裝置同步、資料匯出或備份。
 - GitHub remote 或部署設定。
 
-## 原型內的資料流
+## 本機資料流
 
-`App.tsx` 是 App shell，保有 reducer 狀態與目前分頁。各頁面只透過 typed action 發出變更：
+`App.tsx` 透過持久化 hook 管理 reducer 與 IndexedDB：
 
-1. 首次設定建立 `UserProfile` 與第一個 `Container`。
-2. 今日頁點選容器，建立帶有本地時間的 `DrinkRecord`。
-3. reducer 更新記憶體狀態。
-4. 今日進度和 30 天統計直接從最新紀錄衍生，不另存重複總數。
-5. 重新整理頁面後回到空白初始狀態，這是本階段的預期行為。
+1. App 啟動時顯示載入狀態並開啟 `drink-water` version 1 資料庫。
+2. 讀取 `app-state/current`，驗證資料格式並移除七日範圍外的紀錄。
+3. 有設定時進入今日頁；沒有資料時進入首次設定。
+4. 使用者操作先立即更新 reducer，再將完整快照排入序列化寫入佇列。
+5. 每次寫入前再次清理過期紀錄，避免較舊的非同步操作覆蓋新狀態。
+6. 寫入失敗時保留目前畫面資料並提供重試，不用錯誤資料覆蓋 IndexedDB。
 
-示範紀錄以 `isDemo` 標記，關閉示範資料時只移除該標記的紀錄，因此本次操作產生的真實紀錄會保留。
+示範紀錄以 `isDemo` 標記；關閉示範資料只移除該標記的紀錄。喝水紀錄的 `goalMlAtTime` 保存建立當下的目標，同一天使用第一筆紀錄的目標判斷是否達標。
+
+## 七日保存規則
+
+七天是裝置本地時區的今天加前 6 個日曆日，而不是精確 168 小時。清理界線是今天往前第 6 天的 00:00；未來時間與更早時間都不能作為有效紀錄。
+
+過期喝水紀錄會從 IndexedDB 永久刪除。Profile、containers 與 App 設定會持續保留，直到使用者在設定頁確認清除全部本機資料。
 
 ## 最終三層架構
 
 ### 1. React PWA
 
-使用者看見與操作的 App。現在的元件、型別、reducer 和視覺流程都會繼續沿用。
+使用者看見與操作的 App。現在的元件、型別、reducer 和資料庫介面都會繼續沿用。
 
 ### 2. 手機 IndexedDB
 
-下一階段會將 profile、containers 與 records 寫入 IndexedDB。完整明細留在使用者裝置，因此離線仍能記錄、不需要帳號，後端也不保存完整健康與生活資料。
+目前已保存 profile、containers、records 與 App 設定。完整飲水明細只留在使用者裝置，因此不需要帳號，未來加入離線資源快取後也能在沒有網路時使用。
 
 ### 3. Supabase
 
-Supabase 只處理 App 關閉後仍需運作的能力：一次性邀請碼、裝置與 Web Push subscription、今日目標與累計，以及排程提醒。它不會取代 IndexedDB，也不保存完整飲水明細。
+未來只處理 App 關閉後仍需運作的能力：一次性邀請碼、裝置與 Web Push subscription、今日目標與累計，以及排程提醒。它不會取代 IndexedDB，也不保存完整喝水明細。
 
 ## 開發順序
 
-1. **目前：**驗證完整互動介面與資料規則。
-2. 將 reducer 狀態接到 IndexedDB，完成真正的本機喝水 MVP。
-3. 加入 PWA 安裝與離線能力。
-4. 加入最小 Supabase 後端。
-5. 加入一次性邀請碼與智慧提醒。
-6. 建立 private GitHub repository 並選擇部署平台。
+1. **已完成：**互動介面與 IndexedDB 七日本機持久化。
+2. 加入 PWA 安裝與離線資源快取。
+3. 加入最小 Supabase 後端。
+4. 加入一次性邀請碼與智慧提醒。
+5. 建立 private GitHub repository 並選擇部署平台。
 
 ## 為什麼仍保持簡單
 
-目前不需要伺服器端渲染、完整會員系統、路由框架、狀態管理套件或圖表套件。先用 React 內建能力驗證核心體驗，可以降低維護成本；之後加入 IndexedDB 或 Supabase 時，也不需要重寫現有畫面和資料型別。
+目前不需要伺服器端渲染、完整會員系統、路由框架或狀態管理套件。IndexedDB 使用原生 API，以一份 AppState 原子快照保存；對七日資料量而言足夠簡單可靠。若未來改為長期歷史或大量查詢，再遷移成多個 object store 與索引即可。

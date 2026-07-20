@@ -28,6 +28,17 @@ export function localDateKey(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+export function getRetentionBounds(reference = new Date()): {
+  earliest: Date;
+  latest: Date;
+} {
+  const earliest = new Date(reference);
+  earliest.setHours(0, 0, 0, 0);
+  earliest.setDate(earliest.getDate() - 6);
+
+  return { earliest, latest: new Date(reference) };
+}
+
 export function isSameLocalDay(isoDate: string, reference: Date): boolean {
   return localDateKey(new Date(isoDate)) === localDateKey(reference);
 }
@@ -54,8 +65,8 @@ export function createDemoRecords(
     0.72, 0.9, 1.08, 0.84, 1.02, 0.65, 0.96, 1.12, 0.78, 0.93,
   ];
 
-  return Array.from({ length: 29 }, (_, index) => {
-    const daysAgo = 29 - index;
+  return Array.from({ length: 6 }, (_, index) => {
+    const daysAgo = 6 - index;
     const date = new Date(reference);
     date.setDate(reference.getDate() - daysAgo);
     date.setHours(20, 15, 0, 0);
@@ -69,6 +80,7 @@ export function createDemoRecords(
       containerId: null,
       containerName: "示範紀錄",
       isDemo: true,
+      goalMlAtTime: dailyGoal,
     };
   });
 }
@@ -126,6 +138,10 @@ export function appReducer(state: AppState, action: AppAction): AppState {
             ]
           : state.records.filter((record) => !record.isDemo),
       };
+    case "hydrate":
+      return action.state;
+    case "reset":
+      return initialState;
     default:
       return state;
   }
