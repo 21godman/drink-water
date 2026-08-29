@@ -173,6 +173,17 @@ input:focus-visible {
   text-transform: uppercase;
 }
 
+.cloud-cleanup-notice {
+  margin: 18px 0 0;
+  padding: 11px 13px;
+  border: 1px solid rgba(46, 122, 111, 0.2);
+  border-radius: 12px;
+  color: #174e50;
+  background: #e4f5f2;
+  font-size: 0.7rem;
+  line-height: 1.55;
+}
+
 .drop-logo,
 .mini-drop {
   display: grid;
@@ -1282,6 +1293,116 @@ input:focus-visible {
   margin-top: 12px;
   color: #537170;
   background: rgba(222, 243, 237, 0.7);
+}
+
+.invite-redeem-form {
+  display: grid;
+  gap: 14px;
+}
+
+.invite-redeem-form .reminder-summary {
+  margin-bottom: 2px;
+}
+
+.invite-redeem-form input[type="text"] {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.turnstile-widget {
+  min-height: 65px;
+  overflow: hidden;
+}
+
+.full-width-button {
+  width: 100%;
+}
+
+.cloud-step-card {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 15px;
+  border: 1px solid rgba(46, 122, 111, 0.16);
+  border-radius: 14px;
+  background: rgba(232, 246, 242, 0.72);
+}
+
+.cloud-step-card strong,
+.owner-invite-panel strong {
+  color: var(--ink);
+  font-size: 0.82rem;
+}
+
+.cloud-step-card p,
+.owner-invite-panel p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.55;
+}
+
+.cloud-step-card .secondary-button {
+  justify-self: start;
+}
+
+.owner-invite-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.owner-invite-panel > div {
+  display: grid;
+  gap: 4px;
+}
+
+.invite-code-dialog {
+  position: fixed;
+  z-index: 40;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(21, 49, 48, 0.48);
+  backdrop-filter: blur(6px);
+}
+
+.invite-code-dialog > div {
+  width: min(100%, 360px);
+  padding: 24px;
+  border-radius: 22px;
+  background: var(--surface);
+  box-shadow: 0 24px 70px rgba(21, 55, 52, 0.24);
+}
+
+.invite-code-dialog h3 {
+  margin: 4px 0 18px;
+}
+
+.invite-code-dialog code {
+  display: block;
+  overflow-wrap: anywhere;
+  padding: 15px 12px;
+  border-radius: 12px;
+  color: var(--primary);
+  background: var(--soft-surface);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: clamp(0.82rem, 4vw, 1rem);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-align: center;
+}
+
+.invite-code-dialog p:not(.overline) {
+  margin: 12px 0 20px;
+  color: var(--muted);
+  font-size: 0.68rem;
+  text-align: center;
 }
 
 .success-message {

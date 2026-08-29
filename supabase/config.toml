@@ -1,0 +1,49 @@
+project_id = "drink-water"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+
+[db]
+port = 54322
+major_version = 17
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+additional_redirect_urls = [
+  "http://localhost:5173",
+  "https://21godman.github.io/drink-water/",
+]
+enable_signup = true
+enable_anonymous_sign_ins = true
+
+[edge_runtime]
+enabled = true
+policy = "per_worker"
+
+[functions.redeem-invite]
+verify_jwt = true
+import_map = "./functions/deno.json"
+
+[functions.create-invite]
+verify_jwt = true
+import_map = "./functions/deno.json"
+
+[functions.register-push]
+verify_jwt = true
+import_map = "./functions/deno.json"
+
+[functions.sync-reminder-settings]
+verify_jwt = true
+import_map = "./functions/deno.json"
+
+[functions.send-reminders]
+verify_jwt = false
+import_map = "./functions/deno.json"

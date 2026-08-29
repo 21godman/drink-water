@@ -1,10 +1,11 @@
 import { useEffect, useState, type Dispatch, type FormEvent } from "react";
 import { createDemoRecords, createId, getDailyGoal } from "./appState";
+import CloudReminderCard from "./CloudReminderCard";
+import type { CloudReminders } from "./cloudTypes";
 import type {
   AppAction,
   AppState,
   Container,
-  ReminderIntervalMinutes,
   UserProfile,
 } from "./types";
 import type { PwaStatus } from "./usePwaStatus";
@@ -13,14 +14,23 @@ type SettingsViewProps = {
   state: AppState;
   dispatch: Dispatch<AppAction>;
   onClearData: () => Promise<void>;
-  pwa: Pick<PwaStatus, "canInstall" | "installMode" | "install">;
+  pwa: Pick<
+    PwaStatus,
+    "canInstall" | "installMode" | "install" | "isInstalled"
+  >;
+  cloud: CloudReminders;
 };
+
+type PwaInstallCardProps = Pick<
+  PwaStatus,
+  "canInstall" | "installMode" | "install"
+>;
 
 export function PwaInstallCard({
   canInstall,
   installMode,
   install,
-}: SettingsViewProps["pwa"]) {
+}: PwaInstallCardProps) {
   if (!canInstall) return null;
 
   const nativeInstall = installMode === "native";
@@ -124,22 +134,19 @@ function ContainerDialog({
   );
 }
 
-export default function SettingsView({ state, dispatch, onClearData, pwa }: SettingsViewProps) {
+export default function SettingsView({
+  state,
+  dispatch,
+  onClearData,
+  pwa,
+  cloud,
+}: SettingsViewProps) {
   const profile = state.profile!;
   const [height, setHeight] = useState(String(profile.heightCm));
   const [weight, setWeight] = useState(String(profile.weightKg));
   const [goalMode, setGoalMode] = useState<UserProfile["goalMode"]>(profile.goalMode);
   const [customGoal, setCustomGoal] = useState(profile.customGoalMl ? String(profile.customGoalMl) : "");
   const [profileMessage, setProfileMessage] = useState("");
-  const [reminderStartTime, setReminderStartTime] = useState(
-    state.reminderSettings.startTime,
-  );
-  const [reminderEndTime, setReminderEndTime] = useState(
-    state.reminderSettings.endTime,
-  );
-  const [reminderInterval, setReminderInterval] =
-    useState<ReminderIntervalMinutes>(state.reminderSettings.intervalMinutes);
-  const [reminderMessage, setReminderMessage] = useState("");
   const [containerDialog, setContainerDialog] = useState<Container | "new" | null>(null);
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [clearError, setClearError] = useState("");
@@ -151,12 +158,6 @@ export default function SettingsView({ state, dispatch, onClearData, pwa }: Sett
     setGoalMode(profile.goalMode);
     setCustomGoal(profile.customGoalMl ? String(profile.customGoalMl) : "");
   }, [profile]);
-
-  useEffect(() => {
-    setReminderStartTime(state.reminderSettings.startTime);
-    setReminderEndTime(state.reminderSettings.endTime);
-    setReminderInterval(state.reminderSettings.intervalMinutes);
-  }, [state.reminderSettings]);
 
   const draftProfile: UserProfile = {
     heightCm: Number(height),
@@ -177,30 +178,6 @@ export default function SettingsView({ state, dispatch, onClearData, pwa }: Sett
     }
     dispatch({ type: "updateProfile", profile: draftProfile });
     setProfileMessage("設定已更新");
-  }
-
-  function saveReminderSettings(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const validTime = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
-    if (
-      !validTime.test(reminderStartTime) ||
-      !validTime.test(reminderEndTime) ||
-      reminderStartTime >= reminderEndTime
-    ) {
-      setReminderMessage("結束時間必須晚於開始時間，且不能跨越午夜。");
-      return;
-    }
-
-    dispatch({
-      type: "updateReminderSettings",
-      settings: {
-        enabled: state.reminderSettings.enabled,
-        startTime: reminderStartTime,
-        endTime: reminderEndTime,
-        intervalMinutes: reminderInterval,
-      },
-    });
-    setReminderMessage("提醒設定已儲存");
   }
 
   return (
@@ -225,92 +202,12 @@ export default function SettingsView({ state, dispatch, onClearData, pwa }: Sett
         </form>
       </section>
 
-      <section className="settings-card reminder-card" aria-labelledby="reminder-title">
-        <div className="settings-heading">
-          <span className="settings-icon" aria-hidden="true">◷</span>
-          <div>
-            <h2 id="reminder-title">喝水提醒</h2>
-            <p>{state.reminderSettings.enabled ? "已開啟提醒偏好" : "目前已關閉"}</p>
-          </div>
-          <label className="switch">
-            <input
-              aria-label="切換喝水提醒"
-              type="checkbox"
-              checked={state.reminderSettings.enabled}
-              onChange={(event) => {
-                setReminderMessage("");
-                dispatch({
-                  type: "updateReminderSettings",
-                  settings: {
-                    ...state.reminderSettings,
-                    enabled: event.target.checked,
-                  },
-                });
-              }}
-            />
-            <span aria-hidden="true" />
-          </label>
-        </div>
-
-        {state.reminderSettings.enabled ? (
-          <form onSubmit={saveReminderSettings}>
-            <div className="field-grid">
-              <label className="field">
-                <span>每日開始時間</span>
-                <input
-                  type="time"
-                  value={reminderStartTime}
-                  onChange={(event) => {
-                    setReminderStartTime(event.target.value);
-                    setReminderMessage("");
-                  }}
-                />
-              </label>
-              <label className="field">
-                <span>每日結束時間</span>
-                <input
-                  type="time"
-                  value={reminderEndTime}
-                  onChange={(event) => {
-                    setReminderEndTime(event.target.value);
-                    setReminderMessage("");
-                  }}
-                />
-              </label>
-            </div>
-            <div className="reminder-interval-heading">提醒間隔</div>
-            <div className="segmented-control settings-segment reminder-interval" aria-label="提醒間隔">
-              {([30, 60, 90] as const).map((minutes) => (
-                <label className={reminderInterval === minutes ? "selected" : ""} key={minutes}>
-                  <input
-                    type="radio"
-                    name="reminder-interval"
-                    checked={reminderInterval === minutes}
-                    onChange={() => {
-                      setReminderInterval(minutes);
-                      setReminderMessage("");
-                    }}
-                  />
-                  {minutes} 分鐘
-                </label>
-              ))}
-            </div>
-            <div className="settings-save-row">
-              <span
-                className={reminderMessage.includes("已儲存") ? "success-message" : "form-error"}
-                role={reminderMessage && !reminderMessage.includes("已儲存") ? "alert" : "status"}
-              >{reminderMessage}</span>
-              <button className="secondary-button" type="submit">儲存提醒設定</button>
-            </div>
-          </form>
-        ) : (
-          <p className="reminder-summary">
-            目前保存：每天 {state.reminderSettings.startTime}–{state.reminderSettings.endTime}，每 {state.reminderSettings.intervalMinutes} 分鐘。
-          </p>
-        )}
-
-        <p className="reminder-notice">目前只保存提醒偏好，尚不會發送系統通知。</p>
-      </section>
+      <CloudReminderCard
+        settings={state.reminderSettings}
+        dispatch={dispatch}
+        cloud={cloud}
+        pwa={pwa}
+      />
 
       <section className="settings-card" aria-labelledby="containers-title">
         <div className="settings-heading"><span className="settings-icon" aria-hidden="true">▱</span><div><h2 id="containers-title">常用容器</h2><p>首頁的快速記水按鈕</p></div><button className="small-add-button" type="button" onClick={() => setContainerDialog("new")}>＋ 新增</button></div>
@@ -336,7 +233,9 @@ export default function SettingsView({ state, dispatch, onClearData, pwa }: Sett
 
       <section className="settings-card data-card" aria-labelledby="local-data-title">
         <div className="settings-heading"><span className="settings-icon" aria-hidden="true">▤</span><div><h2 id="local-data-title">本機資料</h2><p>設定長期保留，喝水紀錄保留最近 7 天</p></div></div>
-        <p className="data-note">資料只存在這台裝置的瀏覽器，不會上傳雲端。清除網站資料或更換裝置可能造成紀錄遺失。</p>
+        <p className="data-note">
+          喝水明細只存在這台裝置；雲端只保存提醒身分與推播設定。清除後匿名身分無法復原，owner 需從 Supabase Dashboard 重發。
+        </p>
         <button className="clear-data-button" type="button" onClick={() => setShowClearDialog(true)}>清除全部本機資料</button>
       </section>
 
@@ -351,7 +250,9 @@ export default function SettingsView({ state, dispatch, onClearData, pwa }: Sett
               <div><p className="overline danger-overline">無法復原</p><h2 id="clear-data-title">清除全部本機資料？</h2></div>
               <button className="icon-button" disabled={isClearing} type="button" onClick={() => setShowClearDialog(false)} aria-label="關閉清除資料確認">×</button>
             </div>
-            <p id="clear-data-description" className="confirmation-copy">身體資料、每日目標、所有容器與最近 7 天的喝水紀錄都會永久刪除。</p>
+            <p id="clear-data-description" className="confirmation-copy">
+              身體資料、每日目標、所有容器與最近 7 天的喝水紀錄都會永久刪除。雲端提醒裝置會一併解除；離線時將在恢復連線後自動完成。
+            </p>
             {clearError ? <p className="form-error" role="alert">{clearError}</p> : null}
             <div className="confirmation-actions">
               <button className="secondary-button" disabled={isClearing} type="button" onClick={() => setShowClearDialog(false)}>取消</button>

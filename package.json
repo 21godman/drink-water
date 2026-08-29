@@ -10,10 +10,17 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "test": "vitest run",
+    "supabase:check": "supabase db push --linked --dry-run",
+    "supabase:push": "supabase db push --linked",
+    "supabase:lint": "supabase db lint --linked --schema public,private --fail-on error",
+    "supabase:advisors": "supabase db advisors --linked --type all --level info --fail-on error",
+    "supabase:deploy": "supabase functions deploy --use-api",
+    "vapid:generate": "node scripts/generate-vapid.mjs",
     "predeploy": "npm run lint && npm run test && npm run build:pages",
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
+    "@supabase/supabase-js": "2.110.8",
     "react": "19.2.7",
     "react-dom": "19.2.7"
   },
@@ -29,6 +36,7 @@
     "gh-pages": "^6.3.0",
     "globals": "17.7.0",
     "jsdom": "28.1.0",
+    "supabase": "2.109.1",
     "typescript": "5.9.3",
     "typescript-eslint": "8.55.0",
     "vite": "8.1.5",

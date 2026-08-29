@@ -1,10 +1,10 @@
 # drink-water 架構說明
 
-這份文件說明目前本機 MVP 的資料流，以及未來如何在不把完整喝水明細上傳雲端的前提下加入 PWA 與提醒後端。
+這份文件說明目前 PWA、IndexedDB 與雲端提醒後端的資料流；完整喝水明細仍只保存在使用者裝置。
 
 ## 現在的階段
 
-目前是 **Phase 3A：本機提醒偏好設定**。
+目前是 **Phase 3B：邀請碼裝置身分與固定間隔 Web Push**。
 
 已經有：
 
@@ -20,13 +20,17 @@
 - Public GitHub repository 與手動發布的 GitHub Pages HTTPS 網站。
 - 可開關的本機提醒偏好，以及每天開始、結束時間與 30／60／90 分鐘間隔。
 - 舊版 IndexedDB 快照缺少提醒欄位時的向後相容預設補值。
+- Supabase Anonymous Auth 裝置身分、一次性邀請碼與 owner bootstrap／recovery。
+- 成員、提醒偏好、Push Subscription 與通知 delivery 的 RLS 資料模型。
+- Turnstile 防濫用、Push Service Worker、Cron 與可重試 Edge Function 發送流程。
+- linked Supabase 雲端 Project 已套用 migration，五個 Edge Functions 已部署。
 
 還沒有：
 
-- Supabase 資料表、Edge Function、邀請碼或 Web Push。
-- Notification API 權限請求、系統通知或背景提醒。
+- 已確認完成的 production secrets、Cron 與手機實機通知驗證。
 - 帳號、跨裝置同步、資料匯出或備份。
 - GitHub Actions、CI 或自動部署。
+- 依每日飲水進度判斷的智慧提醒。
 
 ## 本機資料流
 
@@ -38,6 +42,7 @@
 4. 使用者操作先立即更新 reducer，再將完整快照排入序列化寫入佇列。
 5. 每次寫入前再次清理過期紀錄，避免較舊的非同步操作覆蓋新狀態。
 6. 寫入失敗時保留目前畫面資料並提供重試，不用錯誤資料覆蓋 IndexedDB。
+7. 清除資料前先寫入不含身分或喝水內容的待雲端清理旗標；IndexedDB 清除成功後立即嘗試解除 Push Subscription 與匿名 session，離線或暫時失敗時於下次啟動或恢復網路後重試。
 
 示範紀錄以 `isDemo` 標記；關閉示範資料只移除該標記的紀錄。喝水紀錄的 `goalMlAtTime` 保存建立當下的目標，同一天使用第一筆紀錄的目標判斷是否達標。
 
@@ -45,7 +50,7 @@
 
 `ReminderSettings` 與其他 App 設定一起保存在 IndexedDB 快照，預設為關閉、每天 `07:00–23:00`、每 60 分鐘。使用者可選擇 30、60 或 90 分鐘間隔；第一版只接受同一天內開始時間早於結束時間的時段。
 
-關閉提醒只會把 `enabled` 設為 `false`，不會清除已保存的時段與間隔。Phase 3A 不呼叫 Notification API，也不送出實際通知；這份設定會在後續加入 Web Push 時直接沿用。
+未設定雲端環境時，關閉提醒只會把本機 `enabled` 設為 `false`。雲端模式下，開啟提醒必須由使用者明確點擊，完成通知權限、Push Subscription 與伺服器設定同步；關閉時停止排程但保留 subscription，方便重新開啟。
 
 既有 IndexedDB 仍維持 version 1。載入舊快照時，如果其他資料有效但缺少 `reminderSettings`，會自動補上預設值，不需要 object store migration。
 
@@ -54,7 +59,7 @@
 1. Production build 產生 Manifest、Service Worker 與帶版本的靜態資源清單；開發模式不註冊 Service Worker。
 2. 首次線上開啟後，Service Worker 預先快取 App shell、樣式與圖示，之後可離線重新載入前端入口。
 3. 喝水資料仍只由 IndexedDB 管理，不會寫入 Cache Storage，也不會使用 localStorage 備份。
-4. localStorage 只保存「已關閉主動安裝提示」這個非關鍵 UI 決定。
+4. localStorage 只保存「已關閉主動安裝提示」與待雲端清理時間；後者不包含 JWT、Push endpoint 或喝水資料，Supabase session 仍由 Auth SDK 自己管理。
 5. 新 Service Worker 下載完成後先等待；使用者選擇「立即更新」才啟用並重新載入頁面。
 6. 全域狀態提示依序處理 IndexedDB 保存錯誤、版本更新、離線與安裝，避免多個訊息同時競爭畫面。
 
@@ -64,8 +69,8 @@
 2. 發布只在本機手動執行；指令會先完成 lint、測試與 `/drink-water/` base 的 production build，再推送 `dist/`。
 3. 本機開發與一般 build 維持 `/` base，避免 GitHub Pages 子路徑影響本機流程。
 4. 網站使用 robots metadata 降低搜尋曝光，但所有前端程式與 `pages.dev` 類似的公開網站一樣，都不能保存任何秘密。
-5. 未來只有 Supabase URL、publishable key 與 VAPID public key 可進入前端；secret／service-role key、VAPID private key 與管理憑證只能存在受控後端。
-6. Supabase Auth 採管理員邀請與個別 Email 密碼；公開註冊與匿名登入關閉，Database 以 RLS 限制每位使用者只能存取自己的 rows。
+5. 只有 Supabase URL、publishable key、VAPID public key 與 Turnstile site key 可進入前端；secret key、VAPID private key、Turnstile secret 與管理憑證只能存在受控後端。
+6. Supabase Auth 允許建立受 Turnstile 保護的匿名裝置身分，但只有原子兌換一次性邀請碼的 active member 能使用提醒資料；Database 以 RLS 限制每位使用者只能存取自己的 rows。
 
 ## 七日保存規則
 
@@ -85,7 +90,11 @@
 
 ### 3. Supabase
 
-未來只處理 App 關閉後仍需運作的能力：一次性邀請碼、裝置與 Web Push subscription、今日目標與累計，以及排程提醒。它不會取代 IndexedDB，也不保存完整喝水明細。
+Supabase 只處理 App 關閉後仍需運作的能力：匿名裝置身分、一次性邀請碼、提醒設定、Push Subscription 與排程 delivery。它不會取代 IndexedDB，也不保存完整喝水明細。
+
+第一位 owner 由 SQL Editor 呼叫 `private.bootstrap_owner_invite()` 取得一次性代碼。一般使用者完成 Turnstile 後建立匿名 Auth user，再透過 `redeem-invite` 原子兌換。只有 active owner 可呼叫 `create-invite`；owner 裝置遺失時由 SQL Editor 執行 recovery。
+
+Cron 每分鐘呼叫 `send-reminders`。資料庫先將到期時槽推進到下一個未來時間，再以 `(subscription_id, scheduled_for)` 去重 delivery；暫時錯誤最多重試三次，Push endpoint 回傳 404／410 時永久停用該 subscription。
 
 ## 開發順序
 
@@ -93,7 +102,7 @@
 2. **已完成：**PWA 安裝、離線資源快取與版本更新提示。
 3. **已完成：**Public GitHub repository 與手動 GitHub Pages 部署設定。
 4. **已完成：**本機提醒開關、時段與固定間隔偏好。
-5. 加入邀請制 Supabase Auth、最小提醒後端與真正的 Web Push。
+5. **雲端程式已部署：**linked Project 已套用邀請碼裝置身分、提醒後端與 Web Push functions；仍需確認 production secrets、Cron 與手機實機通知。
 6. 依飲水進度加入智慧提醒。
 
 ## 為什麼仍保持簡單

@@ -3,6 +3,7 @@ import { createId, getDailyGoal } from "./appState";
 import type { Container, UserProfile } from "./types";
 
 type OnboardingProps = {
+  cloudCleanupPending: boolean;
   onComplete: (profile: UserProfile, container: Container) => void;
 };
 
@@ -11,7 +12,10 @@ function readPositiveNumber(value: string): number | null {
   return Number.isFinite(number) && number > 0 ? number : null;
 }
 
-export default function Onboarding({ onComplete }: OnboardingProps) {
+export default function Onboarding({
+  cloudCleanupPending,
+  onComplete,
+}: OnboardingProps) {
   const [height, setHeight] = useState("");
   const [weight, setWeight] = useState("");
   const [goalMode, setGoalMode] = useState<UserProfile["goalMode"]>("formula");
@@ -74,6 +78,12 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
           <span className="drop-logo" aria-hidden="true">水</span>
           <span>drink water</span>
         </div>
+
+        {cloudCleanupPending ? (
+          <p className="cloud-cleanup-notice" role="status">
+            本機資料已清除。雲端提醒裝置會在連線可用時自動解除。
+          </p>
+        ) : null}
 
         <div className="onboarding-intro">
           <p className="overline">第一次設定</p>

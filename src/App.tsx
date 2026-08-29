@@ -5,6 +5,7 @@ import PwaStatusBanner from "./PwaStatusBanner";
 import SettingsView from "./SettingsView";
 import TodayView from "./TodayView";
 import type { AppView } from "./types";
+import { useCloudReminders } from "./useCloudReminders";
 import { usePersistentAppState } from "./usePersistentAppState";
 import { usePwaStatus } from "./usePwaStatus";
 
@@ -25,7 +26,22 @@ function App() {
     retrySave,
     clearLocalData,
   } = usePersistentAppState();
+  const cloud = useCloudReminders({
+    isInstalled: pwa.isInstalled,
+    isOnline: pwa.isOnline,
+  });
   const [view, setView] = useState<AppView>("today");
+
+  async function clearAllData() {
+    const newlyScheduled = cloud.prepareCloudIdentityRemoval();
+    try {
+      await clearLocalData();
+    } catch (error) {
+      if (newlyScheduled) cloud.cancelCloudIdentityRemoval();
+      throw error;
+    }
+    await cloud.removeCloudIdentity();
+  }
 
   useEffect(() => {
     document.documentElement.scrollTop = 0;
@@ -55,6 +71,7 @@ function App() {
   if (!state.isOnboarded || !state.profile) {
     return (
       <Onboarding
+        cloudCleanupPending={cloud.cloudCleanupPending}
         onComplete={(profile, container) =>
           dispatch({ type: "completeSetup", profile, container })
         }
@@ -86,8 +103,9 @@ function App() {
           <SettingsView
             state={state}
             dispatch={dispatch}
-            onClearData={clearLocalData}
+            onClearData={clearAllData}
             pwa={pwa}
+            cloud={cloud}
           />
         ) : null}
       </main>

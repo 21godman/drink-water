@@ -7,9 +7,20 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../src/App";
 import { clearAppState, loadAppState, openDatabase } from "../src/indexedDb";
+
+vi.mock("../src/supabaseClient", () => ({
+  cloudConfiguration: {
+    supabaseUrl: "",
+    supabasePublishableKey: "",
+    vapidPublicKey: "",
+    turnstileSiteKey: "",
+  },
+  getSupabaseClient: () => null,
+  isCloudConfigured: false,
+}));
 
 afterEach(async () => {
   cleanup();
