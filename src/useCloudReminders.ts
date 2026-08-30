@@ -63,6 +63,7 @@ export function useCloudReminders({
     currentNotificationPermission,
   );
   const [subscriptionActive, setSubscriptionActive] = useState(false);
+  const [nextReminderAt, setNextReminderAt] = useState<string | null>(null);
   const [cloudCleanupPending, setCloudCleanupPending] = useState(
     hasPendingCloudCleanup,
   );
@@ -94,6 +95,7 @@ export function useCloudReminders({
       if (!session) {
         setMembershipRole(null);
         setSubscriptionActive(false);
+        setNextReminderAt(null);
         return;
       }
 
@@ -109,7 +111,19 @@ export function useCloudReminders({
       setMembershipRole(role);
       setNotificationPermission(currentNotificationPermission());
       setSubscriptionActive(false);
+      setNextReminderAt(null);
       if (!role) return;
+
+      const { data: preference, error: preferenceError } = await supabase
+        .from("reminder_preferences")
+        .select("enabled, next_reminder_at")
+        .maybeSingle();
+      if (preferenceError) throw preferenceError;
+      setNextReminderAt(
+        preference?.enabled && typeof preference.next_reminder_at === "string"
+          ? preference.next_reminder_at
+          : null,
+      );
 
       const subscription = await browserSubscription();
       if (
@@ -228,7 +242,7 @@ export function useCloudReminders({
       const supabase = getSupabaseClient();
       if (!supabase) throw new Error("雲端提醒尚未設定完成。");
       if (!isOnline) throw new Error("請先連上網路再同步提醒設定。");
-      const { error: syncError } = await supabase.functions.invoke(
+      const { data, error: syncError } = await supabase.functions.invoke(
         "sync-reminder-settings",
         { body: reminderSettingsPayload(settings) },
       );
@@ -237,6 +251,11 @@ export function useCloudReminders({
           await functionErrorMessage(syncError, "無法同步提醒設定。"),
         );
       }
+      setNextReminderAt(
+        settings.enabled && typeof data?.settings?.next_reminder_at === "string"
+          ? data.settings.next_reminder_at
+          : null,
+      );
     },
     [isOnline],
   );
@@ -351,6 +370,44 @@ export function useCloudReminders({
     [membershipRole, runBusy, syncSettings],
   );
 
+  const testReminder = useCallback(
+    () =>
+      runBusy(async () => {
+        const supabase = getSupabaseClient();
+        if (!supabase) throw new Error("雲端提醒尚未設定完成。");
+        if (!isOnline) throw new Error("請先連上網路再測試通知。");
+        if (!membershipRole) throw new Error("請先輸入有效邀請碼。");
+        if (notificationPermission !== "granted") {
+          throw new Error("請先允許這台裝置接收通知。");
+        }
+
+        const subscription = await browserSubscription();
+        if (!subscription) {
+          setSubscriptionActive(false);
+          throw new Error("找不到這台裝置的推播訂閱，請重新開啟提醒。");
+        }
+
+        const { data, error: testError } = await supabase.functions.invoke(
+          "test-reminder",
+          { body: { endpoint: subscription.endpoint } },
+        );
+        if (testError) {
+          throw new Error(
+            await functionErrorMessage(testError, "測試通知傳送失敗。"),
+          );
+        }
+        if (data?.sent !== true) {
+          throw new Error("伺服器沒有確認測試通知已送出。");
+        }
+      }),
+    [
+      isOnline,
+      membershipRole,
+      notificationPermission,
+      runBusy,
+    ],
+  );
+
   const prepareCloudIdentityRemoval = useCallback(() => {
     if (!isCloudConfigured) return false;
     const newlyScheduled = scheduleCloudCleanup();
@@ -411,6 +468,7 @@ export function useCloudReminders({
       setCloudCleanupPending(false);
       setMembershipRole(null);
       setSubscriptionActive(false);
+      setNextReminderAt(null);
       setGeneratedInvite(null);
     } catch {
       scheduleCloudCleanup();
@@ -433,6 +491,7 @@ export function useCloudReminders({
     membershipRole,
     notificationPermission,
     subscriptionActive,
+    nextReminderAt,
     cloudCleanupPending,
     generatedInvite,
     error,
@@ -442,6 +501,7 @@ export function useCloudReminders({
     enableReminders,
     disableReminders,
     saveReminderSettings,
+    testReminder,
     prepareCloudIdentityRemoval,
     cancelCloudIdentityRemoval,
     removeCloudIdentity,

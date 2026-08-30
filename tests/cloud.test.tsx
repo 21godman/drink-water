@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { defaultReminderSettings } from "../src/appState";
 import CloudReminderCard from "../src/CloudReminderCard";
@@ -13,7 +13,11 @@ import {
   scheduleCloudCleanup,
   urlBase64ToUint8Array,
 } from "../src/cloudUtils";
-import { isPushSubscriptionInput } from "../supabase/functions/_shared/validation";
+import {
+  isPushEndpoint,
+  isPushSubscriptionInput,
+  isReminderSettingsInput,
+} from "../supabase/functions/_shared/validation";
 
 function cloud(overrides: Partial<CloudReminders> = {}): CloudReminders {
   return {
@@ -23,6 +27,7 @@ function cloud(overrides: Partial<CloudReminders> = {}): CloudReminders {
     membershipRole: "member",
     notificationPermission: "default",
     subscriptionActive: false,
+    nextReminderAt: null,
     cloudCleanupPending: false,
     generatedInvite: null,
     error: null,
@@ -32,6 +37,7 @@ function cloud(overrides: Partial<CloudReminders> = {}): CloudReminders {
     enableReminders: vi.fn(),
     disableReminders: vi.fn(),
     saveReminderSettings: vi.fn(),
+    testReminder: vi.fn(),
     prepareCloudIdentityRemoval: vi.fn(() => true),
     cancelCloudIdentityRemoval: vi.fn(),
     removeCloudIdentity: vi.fn(),
@@ -41,6 +47,7 @@ function cloud(overrides: Partial<CloudReminders> = {}): CloudReminders {
 }
 
 afterEach(() => {
+  cleanup();
   clearPendingCloudCleanup();
 });
 
@@ -99,6 +106,12 @@ describe("cloud reminder helpers", () => {
     expect(isPushSubscriptionInput(valid)).toBe(true);
     expect(
       isPushSubscriptionInput({
+        endpoint: valid.endpoint,
+        keys: valid.keys,
+      }),
+    ).toBe(true);
+    expect(
+      isPushSubscriptionInput({
         ...valid,
         expirationTime: -1,
       }),
@@ -109,6 +122,29 @@ describe("cloud reminder helpers", () => {
         keys: { ...valid.keys, p256dh: "x".repeat(513) },
       }),
     ).toBe(false);
+  });
+
+  it("測試通知只接受長度正常的 HTTPS 推播網址", () => {
+    expect(isPushEndpoint("https://push.example/current")).toBe(true);
+    expect(isPushEndpoint("http://push.example/current")).toBe(false);
+    expect(isPushEndpoint(`https://push.example/${"x".repeat(2049)}`)).toBe(
+      false,
+    );
+  });
+
+  it("提醒開始與結束時間只接受整點或半點", () => {
+    const valid = {
+      enabled: true,
+      startTime: "07:30",
+      endTime: "23:00",
+      intervalMinutes: 30,
+      timeZone: "Asia/Taipei",
+    };
+
+    expect(isReminderSettingsInput(valid)).toBe(true);
+    expect(isReminderSettingsInput({ ...valid, startTime: "07:15" })).toBe(
+      false,
+    );
   });
 });
 
@@ -195,5 +231,39 @@ describe("CloudReminderCard", () => {
       />,
     );
     expect(screen.queryByRole("button", { name: "產生邀請碼" })).toBeNull();
+  });
+
+  it("顯示下次通知時間，並可立刻傳送測試通知", () => {
+    const testReminder = vi.fn().mockResolvedValue(undefined);
+    render(
+      <CloudReminderCard
+        settings={{ ...defaultReminderSettings, enabled: true }}
+        dispatch={vi.fn()}
+        cloud={cloud({
+          notificationPermission: "granted",
+          subscriptionActive: true,
+          nextReminderAt: "2026-08-29T05:30:00.000Z",
+          testReminder,
+        })}
+        pwa={{
+          canInstall: false,
+          installMode: "none",
+          install: vi.fn(),
+          isInstalled: true,
+        }}
+      />,
+    );
+
+    expect(screen.getByText("下次通知時間")).toBeTruthy();
+    expect(screen.getByText(/8.*29/)).toBeTruthy();
+    const startTime = screen.getByLabelText("每日開始時間");
+    const endTime = screen.getByLabelText("每日結束時間");
+    expect(startTime.tagName).toBe("SELECT");
+    expect(endTime.tagName).toBe("SELECT");
+    expect(startTime.querySelectorAll("option")).toHaveLength(48);
+    expect(endTime.querySelectorAll("option")).toHaveLength(48);
+    expect(startTime.querySelector('option[value="07:15"]')).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "測試通知" }));
+    expect(testReminder).toHaveBeenCalledTimes(1);
   });
 });

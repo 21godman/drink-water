@@ -23,6 +23,3 @@ npm-debug.log*
 # Supabase CLI project state
 supabase/.branches/
 supabase/.temp/
-
-# Local session handoff
-docs/next-session-handoff.md

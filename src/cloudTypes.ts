@@ -14,6 +14,7 @@ export type CloudReminderState = {
   membershipRole: MembershipRole | null;
   notificationPermission: NotificationPermission | "unsupported";
   subscriptionActive: boolean;
+  nextReminderAt: string | null;
   cloudCleanupPending: boolean;
   generatedInvite: GeneratedInvite | null;
   error: string | null;
@@ -26,6 +27,7 @@ export type CloudReminderActions = {
   enableReminders: (settings: ReminderSettings) => Promise<void>;
   disableReminders: (settings: ReminderSettings) => Promise<void>;
   saveReminderSettings: (settings: ReminderSettings) => Promise<void>;
+  testReminder: () => Promise<void>;
   prepareCloudIdentityRemoval: () => boolean;
   cancelCloudIdentityRemoval: () => void;
   removeCloudIdentity: () => Promise<void>;

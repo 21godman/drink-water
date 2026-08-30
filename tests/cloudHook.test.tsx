@@ -35,7 +35,10 @@ function installPushBrowser(subscription: PushSubscription) {
   });
 }
 
-function supabaseClient(disabledAt: string | null) {
+function supabaseClient(
+  disabledAt: string | null,
+  nextReminderAt = "2026-08-29T05:30:00.000Z",
+) {
   return {
     auth: {
       getSession: vi.fn().mockResolvedValue({
@@ -44,7 +47,10 @@ function supabaseClient(disabledAt: string | null) {
       signOut: vi.fn().mockResolvedValue({ error: null }),
     },
     functions: {
-      invoke: vi.fn().mockResolvedValue({ data: {}, error: null }),
+      invoke: vi.fn((name: string) => Promise.resolve({
+        data: name === "test-reminder" ? { sent: true } : {},
+        error: null,
+      })),
     },
     from: vi.fn((table: string) => {
       if (table === "members") {
@@ -52,6 +58,16 @@ function supabaseClient(disabledAt: string | null) {
           select: vi.fn(() => ({
             maybeSingle: vi.fn().mockResolvedValue({
               data: { role: "member" },
+              error: null,
+            }),
+          })),
+        };
+      }
+      if (table === "reminder_preferences") {
+        return {
+          select: vi.fn(() => ({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: { enabled: true, next_reminder_at: nextReminderAt },
               error: null,
             }),
           })),
@@ -118,6 +134,9 @@ describe("useCloudReminders subscription reconciliation", () => {
       await waitFor(() => expect(result.current.loading).toBe(false));
       expect(result.current.membershipRole).toBe("member");
       expect(result.current.subscriptionActive).toBe(expected);
+      expect(result.current.nextReminderAt).toBe(
+        "2026-08-29T05:30:00.000Z",
+      );
     },
   );
 
@@ -138,7 +157,32 @@ describe("useCloudReminders subscription reconciliation", () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.subscriptionActive).toBe(false);
-    expect(client.from).toHaveBeenCalledTimes(1);
+    expect(client.from).toHaveBeenCalledTimes(2);
+  });
+
+  it("測試通知只傳給目前瀏覽器的推播訂閱", async () => {
+    const subscription = {
+      endpoint: "https://push.example/current-subscription",
+      options: {
+        applicationServerKey: new Uint8Array([1, 2, 3, 4]).buffer,
+      },
+    } as PushSubscription;
+    const client = supabaseClient(null);
+    installPushBrowser(subscription);
+    supabaseMocks.getSupabaseClient.mockReturnValue(client);
+
+    const { result } = renderHook(() =>
+      useCloudReminders({ isInstalled: true, isOnline: true }),
+    );
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(async () => {
+      await result.current.testReminder();
+    });
+
+    expect(client.functions.invoke).toHaveBeenCalledWith("test-reminder", {
+      body: { endpoint: "https://push.example/current-subscription" },
+    });
   });
 
   it("離線時保留待清理旗標，恢復連線後自動解除雲端身分", async () => {

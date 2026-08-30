@@ -2,11 +2,7 @@
 
 這份文件說明目前 PWA、IndexedDB 與雲端提醒後端的資料流；完整喝水明細仍只保存在使用者裝置。
 
-## 現在的階段
-
-目前是 **Phase 3B：邀請碼裝置身分與固定間隔 Web Push**。
-
-已經有：
+## 功能範圍
 
 - 手機優先的首次設定、今日、七日歷史與設定介面。
 - `UserProfile`、`Container`、`DrinkRecord` 與 `ReminderSettings` 核心型別。
@@ -22,12 +18,10 @@
 - 舊版 IndexedDB 快照缺少提醒欄位時的向後相容預設補值。
 - Supabase Anonymous Auth 裝置身分、一次性邀請碼與 owner bootstrap／recovery。
 - 成員、提醒偏好、Push Subscription 與通知 delivery 的 RLS 資料模型。
-- Turnstile 防濫用、Push Service Worker、Cron 與可重試 Edge Function 發送流程。
-- linked Supabase 雲端 Project 已套用 migration，五個 Edge Functions 已部署。
+- Turnstile 防濫用、Push Service Worker、Cron、測試通知與可重試 Edge Function 發送流程。
 
-還沒有：
+不包含：
 
-- 已確認完成的 production secrets、Cron 與手機實機通知驗證。
 - 帳號、跨裝置同步、資料匯出或備份。
 - GitHub Actions、CI 或自動部署。
 - 依每日飲水進度判斷的智慧提醒。
@@ -51,6 +45,8 @@
 `ReminderSettings` 與其他 App 設定一起保存在 IndexedDB 快照，預設為關閉、每天 `07:00–23:00`、每 60 分鐘。使用者可選擇 30、60 或 90 分鐘間隔；第一版只接受同一天內開始時間早於結束時間的時段。
 
 未設定雲端環境時，關閉提醒只會把本機 `enabled` 設為 `false`。雲端模式下，開啟提醒必須由使用者明確點擊，完成通知權限、Push Subscription 與伺服器設定同步；關閉時停止排程但保留 subscription，方便重新開啟。
+
+設定頁會讀取 `next_reminder_at` 顯示伺服器排好的下次通知時間。`test-reminder` 只接受已登入的 active member，且只會傳送到該使用者目前瀏覽器提供的有效 Push endpoint。
 
 既有 IndexedDB 仍維持 version 1。載入舊快照時，如果其他資料有效但缺少 `reminderSettings`，會自動補上預設值，不需要 object store migration。
 
@@ -94,16 +90,7 @@ Supabase 只處理 App 關閉後仍需運作的能力：匿名裝置身分、一
 
 第一位 owner 由 SQL Editor 呼叫 `private.bootstrap_owner_invite()` 取得一次性代碼。一般使用者完成 Turnstile 後建立匿名 Auth user，再透過 `redeem-invite` 原子兌換。只有 active owner 可呼叫 `create-invite`；owner 裝置遺失時由 SQL Editor 執行 recovery。
 
-Cron 每分鐘呼叫 `send-reminders`。資料庫先將到期時槽推進到下一個未來時間，再以 `(subscription_id, scheduled_for)` 去重 delivery；暫時錯誤最多重試三次，Push endpoint 回傳 404／410 時永久停用該 subscription。
-
-## 開發順序
-
-1. **已完成：**互動介面與 IndexedDB 七日本機持久化。
-2. **已完成：**PWA 安裝、離線資源快取與版本更新提示。
-3. **已完成：**Public GitHub repository 與手動 GitHub Pages 部署設定。
-4. **已完成：**本機提醒開關、時段與固定間隔偏好。
-5. **雲端程式已部署：**linked Project 已套用邀請碼裝置身分、提醒後端與 Web Push functions；仍需確認 production secrets、Cron 與手機實機通知。
-6. 依飲水進度加入智慧提醒。
+Cron 每小時的第 0 與第 30 分鐘呼叫 `send-reminders`。開始與結束時間只能選整點或半點。資料庫先將到期時槽推進到下一個未來時間，再以 `(subscription_id, scheduled_for)` 去重 delivery；暫時錯誤最多重試三次，Push endpoint 回傳 404／410 時永久停用該 subscription。
 
 ## 為什麼仍保持簡單
 

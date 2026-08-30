@@ -128,17 +128,18 @@ openssl rand -hex 32
 npm run supabase:deploy
 ```
 
-這個指令使用 Supabase API 在雲端打包，不使用 Docker。完成後到 Dashboard 的 Edge Functions 頁面確認以下五個 Function 都存在：
+這個指令使用 Supabase API 在雲端打包，不使用 Docker。完成後到 Dashboard 的 Edge Functions 頁面確認以下六個 Function 都存在：
 
 - `redeem-invite`
 - `create-invite`
 - `register-push`
 - `sync-reminder-settings`
+- `test-reminder`
 - `send-reminders`
 
-前四個只接受有效使用者 JWT；`send-reminders` 由 cron secret 驗證排程呼叫。
+前五個只接受有效使用者 JWT；`send-reminders` 由 cron secret 驗證排程呼叫。
 
-## 7. 建立每分鐘排程
+## 7. 建立每 30 分鐘排程
 
 在 Supabase SQL Editor 執行以下 SQL。把兩個 placeholder 換成自己的值：
 
@@ -154,7 +155,7 @@ select private.configure_reminder_cron(
 到 Dashboard 的 Cron 頁面確認：
 
 - Job name 是 `drink-water-send-reminders`。
-- Schedule 是每分鐘一次。
+- Schedule 是每小時的第 0 與第 30 分鐘執行。
 - 執行紀錄沒有持續失敗。
 
 ## 8. 設定前端環境

@@ -6,7 +6,15 @@ export type ReminderSettingsInput = {
   timeZone: string;
 };
 
-const TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+const TIME_PATTERN = /^(?:[01]\d|2[0-3]):(?:00|30)$/;
+
+export function isPushEndpoint(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.startsWith("https://") &&
+    value.length <= 2048
+  );
+}
 
 export function isReminderSettingsInput(
   value: unknown,
@@ -31,7 +39,7 @@ export function isReminderSettingsInput(
 
 export function isPushSubscriptionInput(value: unknown): value is {
   endpoint: string;
-  expirationTime: number | null;
+  expirationTime?: number | null;
   keys: { p256dh: string; auth: string };
 } {
   if (!value || typeof value !== "object") return false;
@@ -39,10 +47,9 @@ export function isPushSubscriptionInput(value: unknown): value is {
   if (!candidate.keys || typeof candidate.keys !== "object") return false;
   const keys = candidate.keys as Record<string, unknown>;
   return (
-    typeof candidate.endpoint === "string" &&
-    candidate.endpoint.startsWith("https://") &&
-    candidate.endpoint.length <= 2048 &&
-    (candidate.expirationTime === null ||
+    isPushEndpoint(candidate.endpoint) &&
+    (candidate.expirationTime === undefined ||
+      candidate.expirationTime === null ||
       (typeof candidate.expirationTime === "number" &&
         Number.isSafeInteger(candidate.expirationTime) &&
         candidate.expirationTime >= 0)) &&

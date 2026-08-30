@@ -44,6 +44,10 @@ import_map = "./functions/deno.json"
 verify_jwt = true
 import_map = "./functions/deno.json"
 
+[functions.test-reminder]
+verify_jwt = true
+import_map = "./functions/deno.json"
+
 [functions.send-reminders]
 verify_jwt = false
 import_map = "./functions/deno.json"

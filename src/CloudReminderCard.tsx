@@ -26,13 +26,38 @@ type CloudReminderCardProps = {
   >;
 };
 
+const REMINDER_TIME_OPTIONS = Array.from({ length: 48 }, (_, index) => {
+  const hour = String(Math.floor(index / 2)).padStart(2, "0");
+  const minute = index % 2 === 0 ? "00" : "30";
+  return `${hour}:${minute}`;
+});
+
 function scheduleValid(settings: ReminderSettings): boolean {
-  const validTime = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+  const validTime = /^(?:[01]\d|2[0-3]):(?:00|30)$/;
   return (
     validTime.test(settings.startTime) &&
     validTime.test(settings.endTime) &&
     settings.startTime < settings.endTime
   );
+}
+
+function nextReminderLabel(
+  enabled: boolean,
+  nextReminderAt: string | null,
+): string {
+  if (nextReminderAt) {
+    const nextReminder = new Date(nextReminderAt);
+    if (Number.isNaN(nextReminder.getTime())) return "正在重新讀取時間";
+    return nextReminder.toLocaleString("zh-TW", {
+      month: "numeric",
+      day: "numeric",
+      weekday: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  }
+  return enabled ? "正在等待伺服器排程" : "提醒目前已關閉";
 }
 
 function ReminderFields({
@@ -44,26 +69,36 @@ function ReminderFields({
 }) {
   return (
     <>
-      <div className="field-grid">
+      <div className="field-grid reminder-time-grid">
         <label className="field">
           <span>每日開始時間</span>
-          <input
-            type="time"
+          <select
             value={settings.startTime}
             onChange={(event) =>
               onChange({ ...settings, startTime: event.target.value })
             }
-          />
+          >
+            {REMINDER_TIME_OPTIONS.map((time) => (
+              <option key={time} value={time}>
+                {time}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="field">
           <span>每日結束時間</span>
-          <input
-            type="time"
+          <select
             value={settings.endTime}
             onChange={(event) =>
               onChange({ ...settings, endTime: event.target.value })
             }
-          />
+          >
+            {REMINDER_TIME_OPTIONS.map((time) => (
+              <option key={time} value={time}>
+                {time}
+              </option>
+            ))}
+          </select>
         </label>
       </div>
       <div className="reminder-interval-heading">提醒間隔</div>
@@ -107,7 +142,7 @@ function LocalReminderCard({
   function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!scheduleValid(draft)) {
-      setMessage("結束時間必須晚於開始時間，且不能跨越午夜。");
+      setMessage("結束時間必須晚於開始時間，且不能跨越午夜；時間只能選整點或半點。");
       return;
     }
     dispatch({ type: "updateReminderSettings", settings: draft });
@@ -244,7 +279,7 @@ export default function CloudReminderCard({
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!scheduleValid(draft)) {
-      setMessage("結束時間必須晚於開始時間，且不能跨越午夜。");
+      setMessage("結束時間必須晚於開始時間，且不能跨越午夜；時間只能選整點或半點。");
       return;
     }
     setMessage("");
@@ -261,6 +296,16 @@ export default function CloudReminderCard({
     setMessage("");
     try {
       await cloud.createInvite();
+    } catch {
+      // The cloud hook exposes a stable reader-facing error below.
+    }
+  }
+
+  async function testReminder() {
+    setMessage("");
+    try {
+      await cloud.testReminder();
+      setMessage("測試通知已送出，請查看通知中心");
     } catch {
       // The cloud hook exposes a stable reader-facing error below.
     }
@@ -409,6 +454,25 @@ export default function CloudReminderCard({
               </button>
             </div>
           </form>
+
+          <div className="reminder-delivery-row">
+            <div>
+              <strong>下次通知時間</strong>
+              <p>{nextReminderLabel(settings.enabled, cloud.nextReminderAt)}</p>
+            </div>
+            <button
+              className="secondary-button"
+              disabled={
+                cloud.busy ||
+                !cloud.subscriptionActive ||
+                cloud.notificationPermission !== "granted"
+              }
+              type="button"
+              onClick={() => void testReminder()}
+            >
+              {cloud.busy ? "正在處理…" : "測試通知"}
+            </button>
+          </div>
 
           <p className="reminder-notice">
             {cloud.notificationPermission === "denied"

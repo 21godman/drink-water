@@ -4,7 +4,7 @@
 
 正式網址：<https://21godman.github.io/drink-water/>
 
-目前是 **Phase 3B：邀請碼裝置身分與 Web Push**。可以完成首次設定、快速記水、修改紀錄、查看七日趨勢，以及管理個人目標、常用容器與提醒時段。資料保存在瀏覽器的 IndexedDB；設定好 Supabase、Turnstile 與 VAPID 後，受邀裝置也能在 App 關閉時收到固定間隔提醒。
+這個 App 可以完成首次設定、快速記水、修改紀錄、查看七日趨勢，以及管理個人目標、常用容器與提醒時段。資料保存在瀏覽器的 IndexedDB；設定好 Supabase、Turnstile 與 VAPID 後，受邀裝置也能在 App 關閉時收到固定間隔提醒。
 
 後端只使用 Supabase 雲端 Project，不需要 Docker，也不會在電腦上啟動另一套 Supabase。repository 內的 Supabase CLI 指令只會連線到明確 linked 的雲端 Project。
 
@@ -22,7 +22,18 @@
 - 未設定雲端環境時，繼續在本機保存提醒偏好。
 - 使用一次性邀請碼加入受控的提醒服務，不需要 Email。
 - 在 iPhone 主畫面 PWA 或其他支援 Web Push 的瀏覽器接收固定間隔提醒。
+- 在設定頁查看下次通知時間，並立即傳送一則測試通知到目前裝置。
 - Owner 可產生 24 小時有效、只能兌換一次的新邀請碼。
+
+## 分享給朋友
+
+1. Owner 到 App 的「設定」頁，按「產生邀請碼」。
+2. 把正式網址與邀請碼傳給朋友：<https://21godman.github.io/drink-water/>
+3. 朋友開啟網站並完成首次設定，再到「設定」頁完成驗證、輸入邀請碼，按「使用邀請碼加入」。
+4. iPhone 使用者要用 Safari 開啟網站，從分享選單選「加入主畫面」，再從主畫面圖示開啟 App。
+5. 按「允許通知並開啟提醒」。
+
+每組邀請碼只會顯示一次、只能由一台裝置使用，並會在 24 小時後失效。
 
 ## 七日保存規則
 
@@ -136,7 +147,7 @@ public/push-handler.js        Push 與通知點擊事件
 supabase/
 ├── config.toml               CLI 與 Edge Function 設定
 ├── migrations/               資料表、RLS、SQL functions 與 Cron helper
-└── functions/                邀請、訂閱、設定同步與通知發送
+└── functions/                邀請、訂閱、設定同步、通知發送與測試
 scripts/generate-vapid.mjs    產生 Web Push VAPID key pair
 docs/
 ├── architecture.md           本機與雲端資料流

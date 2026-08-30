@@ -36,7 +36,7 @@ Deno.serve(async (request) => {
       return errorResponse("invalid_subscription", "推播訂閱格式不正確。");
     }
 
-    const { endpoint, expirationTime, keys } = body.subscription;
+    const { endpoint, expirationTime = null, keys } = body.subscription;
     const { data, error } = await admin.rpc("register_push_subscription", {
       subscription_user_id: user.id,
       subscription_endpoint: endpoint,

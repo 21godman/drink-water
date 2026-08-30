@@ -338,7 +338,7 @@ describe("App drinking flow", () => {
     expect(screen.getByText(/目前保存：每天 08:00–22:00，每 90 分鐘/)).toBeTruthy();
   });
 
-  it("拒絕相同、反向與空白的提醒時間", async () => {
+  it("拒絕相同、反向、空白與非半小時間隔的提醒時間", async () => {
     render(<App />);
     await completeSetup();
     fireEvent.click(screen.getByRole("button", { name: /設定/ }));
@@ -360,6 +360,11 @@ describe("App drinking flow", () => {
     fireEvent.change(start, { target: { value: "" } });
     fireEvent.click(save);
     expect(screen.getByRole("alert").textContent).toContain("結束時間必須晚於開始時間");
+
+    fireEvent.change(start, { target: { value: "07:15" } });
+    fireEvent.change(end, { target: { value: "23:00" } });
+    fireEvent.click(save);
+    expect(screen.getByRole("alert").textContent).toContain("整點或半點");
   });
 
   it("最後一個容器不可刪除，新增第二個後即可刪除", async () => {

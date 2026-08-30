@@ -39,7 +39,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -53,7 +54,8 @@ label {
 }
 
 button:focus-visible,
-input:focus-visible {
+input:focus-visible,
+select:focus-visible {
   outline: 3px solid rgba(20, 127, 123, 0.22);
   outline-offset: 2px;
 }
@@ -273,7 +275,8 @@ input:focus-visible {
   margin-top: 0;
 }
 
-.field input {
+.field input,
+.field select {
   width: 100%;
   height: 52px;
   padding: 0 15px;
@@ -288,7 +291,8 @@ input:focus-visible {
   color: #adbcbb;
 }
 
-.field input:focus {
+.field input:focus,
+.field select:focus {
   border-color: #7cc9c5;
   box-shadow: 0 0 0 4px rgba(20, 127, 123, 0.08);
   outline: 0;
@@ -1266,6 +1270,35 @@ input:focus-visible {
   margin-bottom: 16px;
 }
 
+.reminder-time-grid {
+  width: 100%;
+  max-width: 100%;
+  gap: 12px;
+}
+
+.reminder-time-grid .field {
+  min-width: 0;
+}
+
+.reminder-time-grid select {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  appearance: none;
+  padding-right: 38px;
+  padding-left: 12px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #6b8586 50%),
+    linear-gradient(135deg, #6b8586 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) 23px,
+    calc(100% - 13px) 23px;
+  background-repeat: no-repeat;
+  background-size: 5px 5px;
+  font-variant-numeric: tabular-nums;
+}
+
 .reminder-interval-heading {
   margin-top: 18px;
   color: #547071;
@@ -1276,6 +1309,10 @@ input:focus-visible {
 .reminder-interval {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-top: 8px;
+}
+
+.reminder-interval label {
+  white-space: nowrap;
 }
 
 .reminder-summary,
@@ -1344,6 +1381,40 @@ input:focus-visible {
 
 .cloud-step-card .secondary-button {
   justify-self: start;
+}
+
+.reminder-delivery-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 16px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.reminder-delivery-row > div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.reminder-delivery-row strong {
+  color: var(--ink);
+  font-size: 0.76rem;
+}
+
+.reminder-delivery-row p {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.reminder-delivery-row .secondary-button {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .owner-invite-panel {
@@ -1767,6 +1838,24 @@ input:focus-visible {
   }
 
   .settings-save-row .secondary-button {
+    width: 100%;
+  }
+
+  .reminder-time-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .reminder-time-grid .field + .field {
+    margin-top: 0;
+  }
+
+  .reminder-delivery-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .reminder-delivery-row .secondary-button {
     width: 100%;
   }
 
