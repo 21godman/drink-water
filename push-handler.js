@@ -13,7 +13,7 @@ self.addEventListener("push", (event) => {
   const body =
     typeof payload.body === "string"
       ? payload.body
-      : "補充一杯水，照顧今天的自己。";
+      : "補充一杯水，照顧今天的自己";
   const targetUrl = new URL(
     typeof payload.url === "string" ? payload.url : "./",
     self.registration.scope,
