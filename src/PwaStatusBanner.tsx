@@ -1,3 +1,5 @@
+import { useI18n } from "./i18n";
+
 type PwaStatusBannerProps = {
   storageError: string | null;
   retrySave: () => void;
@@ -25,11 +27,12 @@ export default function PwaStatusBanner({
   offlineReady,
   dismissOfflineReady,
 }: PwaStatusBannerProps) {
+  const { t } = useI18n();
   if (storageError) {
     return (
       <aside className="system-banner system-banner-error" role="alert">
-        <span>本次變更尚未保存：{storageError}</span>
-        <button type="button" onClick={retrySave}>重試</button>
+        <span>{t("pwa.unsaved", { error: storageError })}</span>
+        <button type="button" onClick={retrySave}>{t("pwa.retry")}</button>
       </aside>
     );
   }
@@ -37,10 +40,10 @@ export default function PwaStatusBanner({
   if (needRefresh) {
     return (
       <aside className="system-banner system-banner-update" role="status" aria-live="polite">
-        <span>新版本已準備好，要現在更新嗎？</span>
+        <span>{t("pwa.updateReady")}</span>
         <span className="system-banner-actions">
-          <button type="button" onClick={dismissUpdate}>稍後</button>
-          <button type="button" onClick={() => void applyUpdate()}>立即更新</button>
+          <button type="button" onClick={dismissUpdate}>{t("pwa.later")}</button>
+          <button type="button" onClick={() => void applyUpdate()}>{t("pwa.updateNow")}</button>
         </span>
       </aside>
     );
@@ -49,7 +52,7 @@ export default function PwaStatusBanner({
   if (!isOnline) {
     return (
       <aside className="system-banner system-banner-offline" role="status" aria-live="polite">
-        <span>目前離線，仍可使用本機紀錄。</span>
+        <span>{t("pwa.offline")}</span>
       </aside>
     );
   }
@@ -57,10 +60,10 @@ export default function PwaStatusBanner({
   if (showInstallPrompt) {
     return (
       <aside className="system-banner system-banner-install" role="status" aria-live="polite">
-        <span>安裝到手機，之後可從桌面直接開啟。</span>
+        <span>{t("pwa.installPrompt")}</span>
         <span className="system-banner-actions">
-          <button type="button" onClick={dismissInstallPrompt}>稍後</button>
-          <button type="button" onClick={() => void install()}>安裝</button>
+          <button type="button" onClick={dismissInstallPrompt}>{t("pwa.later")}</button>
+          <button type="button" onClick={() => void install()}>{t("pwa.install")}</button>
         </span>
       </aside>
     );
@@ -69,8 +72,8 @@ export default function PwaStatusBanner({
   if (offlineReady) {
     return (
       <aside className="system-banner system-banner-ready" role="status" aria-live="polite">
-        <span>離線使用已準備完成。</span>
-        <button type="button" onClick={dismissOfflineReady}>知道了</button>
+        <span>{t("pwa.offlineReady")}</span>
+        <button type="button" onClick={dismissOfflineReady}>{t("pwa.gotIt")}</button>
       </aside>
     );
   }

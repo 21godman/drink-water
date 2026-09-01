@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useI18n } from "./i18n";
 
 const TURNSTILE_SCRIPT_ID = "cloudflare-turnstile-script";
 const TURNSTILE_SCRIPT_URL =
@@ -36,9 +37,9 @@ function loadTurnstile(): Promise<TurnstileApi> {
 
     const handleLoad = () => {
       if (window.turnstile) resolve(window.turnstile);
-      else reject(new Error("Turnstile 載入失敗"));
+      else reject(new Error("turnstile_load_failed"));
     };
-    const handleError = () => reject(new Error("Turnstile 載入失敗"));
+    const handleError = () => reject(new Error("turnstile_load_failed"));
 
     script.addEventListener("load", handleLoad, { once: true });
     script.addEventListener("error", handleError, { once: true });
@@ -61,6 +62,7 @@ export default function TurnstileWidget({
   onToken: (token: string) => void;
   onError: (message: string) => void;
 }) {
+  const { language, t } = useI18n();
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -76,15 +78,17 @@ export default function TurnstileWidget({
           sitekey: siteKey,
           callback: onToken,
           "expired-callback": () => onToken(""),
-          "error-callback": () => onError("安全驗證失敗，請重新整理後再試。"),
+          "error-callback": () => onError(t("turnstile.failed")),
           theme: "light",
-          language: "zh-TW",
+          language: language === "zh-TW" ? "zh-tw" : language,
         });
       })
       .catch((error: unknown) => {
         if (active) {
           onError(
-            error instanceof Error ? error.message : "安全驗證載入失敗",
+            error instanceof Error && error.message !== "turnstile_load_failed"
+              ? error.message
+              : t("turnstile.loadFailed"),
           );
         }
       });
@@ -93,7 +97,7 @@ export default function TurnstileWidget({
       active = false;
       if (api && widgetId) api.remove(widgetId);
     };
-  }, [onError, onToken, siteKey]);
+  }, [language, onError, onToken, siteKey, t]);
 
   return <div className="turnstile-widget" ref={containerRef} />;
 }

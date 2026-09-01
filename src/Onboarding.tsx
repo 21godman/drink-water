@@ -1,5 +1,6 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { createId, getDailyGoal } from "./appState";
+import { useI18n } from "./i18n";
 import type { Container, UserProfile } from "./types";
 
 type OnboardingProps = {
@@ -16,6 +17,7 @@ export default function Onboarding({
   cloudCleanupPending,
   onComplete,
 }: OnboardingProps) {
+  const { locale, t } = useI18n();
   const [height, setHeight] = useState("");
   const [weight, setWeight] = useState("");
   const [goalMode, setGoalMode] = useState<UserProfile["goalMode"]>("formula");
@@ -81,22 +83,22 @@ export default function Onboarding({
 
         {cloudCleanupPending ? (
           <p className="cloud-cleanup-notice" role="status">
-            本機資料已清除。雲端提醒裝置會在連線可用時自動解除。
+            {t("onboarding.cleanupNotice")}
           </p>
         ) : null}
 
         <div className="onboarding-intro">
-          <p className="overline">第一次設定</p>
-          <h1 id="onboarding-title">找到適合你的<br />每日喝水節奏</h1>
-          <p>不用帳號，花一分鐘完成設定。資料只會保存在這台裝置的瀏覽器。</p>
+          <p className="overline">{t("onboarding.eyebrow")}</p>
+          <h1 id="onboarding-title">{t("onboarding.titleLine1")}<br />{t("onboarding.titleLine2")}</h1>
+          <p>{t("onboarding.description")}</p>
         </div>
 
         <form onSubmit={handleSubmit} noValidate>
           <fieldset className="form-section">
-            <legend><span>1</span> 先認識你</legend>
+            <legend><span>1</span> {t("onboarding.stepYou")}</legend>
             <div className="field-grid">
               <label className="field">
-                <span>身高</span>
+                <span>{t("onboarding.height")}</span>
                 <span className="input-with-unit">
                   <input
                     inputMode="decimal"
@@ -111,7 +113,7 @@ export default function Onboarding({
                 </span>
               </label>
               <label className="field">
-                <span>體重</span>
+                <span>{t("onboarding.weight")}</span>
                 <span className="input-with-unit">
                   <input
                     inputMode="decimal"
@@ -129,8 +131,8 @@ export default function Onboarding({
           </fieldset>
 
           <fieldset className="form-section">
-            <legend><span>2</span> 設定每日目標</legend>
-            <div className="segmented-control" aria-label="每日目標計算方式">
+            <legend><span>2</span> {t("onboarding.stepGoal")}</legend>
+            <div className="segmented-control" aria-label={t("onboarding.goalModeAria")}>
               <label className={goalMode === "formula" ? "selected" : ""}>
                 <input
                   checked={goalMode === "formula"}
@@ -138,7 +140,7 @@ export default function Onboarding({
                   onChange={() => setGoalMode("formula")}
                   type="radio"
                 />
-                自動計算
+                {t("onboarding.autoGoal")}
               </label>
               <label className={goalMode === "custom" ? "selected" : ""}>
                 <input
@@ -147,21 +149,21 @@ export default function Onboarding({
                   onChange={() => setGoalMode("custom")}
                   type="radio"
                 />
-                自訂目標
+                {t("onboarding.customGoal")}
               </label>
             </div>
 
             {goalMode === "formula" ? (
               <div className="goal-preview" aria-live="polite">
                 <div>
-                  <small>依身高與體重建議</small>
-                  <strong>{formulaGoal ? formulaGoal.toLocaleString() : "—"}<span> mL</span></strong>
+                  <small>{t("onboarding.suggested")}</small>
+                  <strong>{formulaGoal ? formulaGoal.toLocaleString(locale) : "—"}<span> mL</span></strong>
                 </div>
-                <p>（身高＋體重）× 10</p>
+                <p>{t("onboarding.formula")}</p>
               </div>
             ) : (
               <label className="field full-width">
-                <span>自訂每日目標</span>
+                <span>{t("onboarding.customDailyGoal")}</span>
                 <span className="input-with-unit">
                   <input
                     inputMode="numeric"
@@ -179,21 +181,21 @@ export default function Onboarding({
           </fieldset>
 
           <fieldset className="form-section">
-            <legend><span>3</span> 加入常用容器</legend>
-            <p className="field-help">完成後可以在設定中繼續新增。</p>
+            <legend><span>3</span> {t("onboarding.stepContainer")}</legend>
+            <p className="field-help">{t("onboarding.containerHelp")}</p>
             <div className="field-grid container-fields">
               <label className="field">
-                <span>容器名稱</span>
+                <span>{t("onboarding.containerName")}</span>
                 <input
                   name="container-name"
                   onChange={(event) => setContainerName(event.target.value)}
-                  placeholder="例如：藍色水壺"
+                  placeholder={t("onboarding.containerExample")}
                   type="text"
                   value={containerName}
                 />
               </label>
               <label className="field">
-                <span>容量</span>
+                <span>{t("onboarding.capacity")}</span>
                 <span className="input-with-unit">
                   <input
                     inputMode="numeric"
@@ -211,11 +213,11 @@ export default function Onboarding({
           </fieldset>
 
           {showErrors && !isValid ? (
-            <p className="form-error" role="alert">請填妥身高、體重、目標與至少一個容器。</p>
+            <p className="form-error" role="alert">{t("onboarding.validation")}</p>
           ) : null}
 
           <button className="primary-button onboarding-submit" type="submit">
-            開始記錄喝水 <span aria-hidden="true">→</span>
+            {t("onboarding.submit")} <span aria-hidden="true">→</span>
           </button>
         </form>
       </section>

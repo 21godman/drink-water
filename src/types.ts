@@ -1,5 +1,7 @@
 export type GoalMode = "formula" | "custom";
 
+export type AppLanguage = "en" | "zh-TW" | "th";
+
 export type UserProfile = {
   heightCm: number;
   weightKg: number;
@@ -37,7 +39,7 @@ export type AppState = {
   profile: UserProfile | null;
   containers: Container[];
   records: DrinkRecord[];
-  demoEnabled: boolean;
+  language: AppLanguage;
   reminderSettings: ReminderSettings;
 };
 
@@ -54,7 +56,7 @@ export type AppAction =
   | { type: "addContainer"; container: Container }
   | { type: "updateContainer"; container: Container }
   | { type: "deleteContainer"; id: string }
-  | { type: "setDemoData"; enabled: boolean; records: DrinkRecord[] }
+  | { type: "setLanguage"; language: AppLanguage }
   | { type: "updateReminderSettings"; settings: ReminderSettings }
   | { type: "hydrate"; state: AppState }
   | { type: "reset" };

@@ -291,6 +291,33 @@ describe("App drinking flow", () => {
     expect(screen.getByRole("heading", { name: "今天也好好喝水" })).toBeTruthy();
   });
 
+  it("可切換英文、繁體中文與泰文，並保存語言設定", async () => {
+    const firstRender = render(<App />);
+    await completeSetup();
+    fireEvent.click(screen.getByRole("button", { name: /設定/ }));
+
+    expect(screen.queryByRole("heading", { name: "7 天示範資料" })).toBeNull();
+    fireEvent.click(screen.getByRole("radio", { name: "English" }));
+    expect(screen.getByRole("heading", { name: "Your settings" })).toBeTruthy();
+    expect(screen.getByRole("navigation", { name: "Main navigation" })).toBeTruthy();
+    expect(document.documentElement.lang).toBe("en");
+
+    await waitFor(async () => {
+      expect((await loadAppState())?.language).toBe("en");
+    });
+    firstRender.unmount();
+
+    render(<App />);
+    expect(
+      await screen.findByRole("heading", { name: "Take care and drink water" }),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("radio", { name: "ไทย" }));
+    expect(screen.getByRole("heading", { name: "การตั้งค่าของคุณ" })).toBeTruthy();
+    expect(screen.getByRole("navigation", { name: "เมนูหลัก" })).toBeTruthy();
+    expect(document.documentElement.lang).toBe("th-TH");
+  });
+
   it("可設定、關閉並重新載入本機提醒偏好", async () => {
     const firstRender = render(<App />);
     await completeSetup();

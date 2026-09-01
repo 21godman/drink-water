@@ -1,5 +1,6 @@
 import { defaultReminderSettings } from "./appState";
 import type {
+  AppLanguage,
   AppState,
   Container,
   DrinkRecord,
@@ -17,7 +18,7 @@ type StoredState = {
   value: unknown;
 };
 
-type AppStateWithoutReminders = Omit<AppState, "reminderSettings">;
+type AppStateBase = Omit<AppState, "language" | "reminderSettings">;
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -81,9 +82,13 @@ function isReminderSettings(value: unknown): value is ReminderSettings {
   );
 }
 
-function isAppStateWithoutReminders(
+function isAppLanguage(value: unknown): value is AppLanguage {
+  return value === "en" || value === "zh-TW" || value === "th";
+}
+
+function isAppStateBase(
   value: unknown,
-): value is AppStateWithoutReminders {
+): value is AppStateBase {
   if (!isObject(value)) return false;
   return (
     typeof value.isOnboarded === "boolean" &&
@@ -92,25 +97,38 @@ function isAppStateWithoutReminders(
     value.containers.every(isContainer) &&
     Array.isArray(value.records) &&
     value.records.every(isDrinkRecord) &&
-    typeof value.demoEnabled === "boolean" &&
     (!value.isOnboarded || (value.profile !== null && value.containers.length > 0))
   );
 }
 
 export function isAppState(value: unknown): value is AppState {
-  if (!isAppStateWithoutReminders(value)) return false;
+  if (!isAppStateBase(value)) return false;
   return (
+    "language" in value &&
+    isAppLanguage(value.language) &&
     "reminderSettings" in value &&
     isReminderSettings(value.reminderSettings)
   );
 }
 
 function normalizeAppState(value: unknown): AppState | null {
-  if (!isAppStateWithoutReminders(value)) return null;
-  if (!("reminderSettings" in value)) {
-    return { ...value, reminderSettings: defaultReminderSettings };
-  }
-  return isReminderSettings(value.reminderSettings) ? value as AppState : null;
+  if (!isAppStateBase(value)) return null;
+  const reminderSettings = "reminderSettings" in value
+    ? value.reminderSettings
+    : defaultReminderSettings;
+  if (!isReminderSettings(reminderSettings)) return null;
+
+  return {
+    isOnboarded: value.isOnboarded,
+    profile: value.profile,
+    containers: value.containers,
+    records: value.records.filter((record) => !record.isDemo),
+    language:
+      "language" in value && isAppLanguage(value.language)
+        ? value.language
+        : "zh-TW",
+    reminderSettings,
+  };
 }
 
 export function pruneExpiredRecords(

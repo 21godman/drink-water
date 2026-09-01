@@ -1,7 +1,6 @@
 import type {
   AppAction,
   AppState,
-  DrinkRecord,
   ReminderSettings,
   UserProfile,
 } from "./types";
@@ -18,7 +17,7 @@ export const initialState: AppState = {
   profile: null,
   containers: [],
   records: [],
-  demoEnabled: false,
+  language: "zh-TW",
   reminderSettings: defaultReminderSettings,
 };
 
@@ -66,34 +65,6 @@ export function createId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-export function createDemoRecords(
-  dailyGoal: number,
-  reference = new Date(),
-): DrinkRecord[] {
-  const completionPattern = [
-    0.72, 0.9, 1.08, 0.84, 1.02, 0.65, 0.96, 1.12, 0.78, 0.93,
-  ];
-
-  return Array.from({ length: 6 }, (_, index) => {
-    const daysAgo = 6 - index;
-    const date = new Date(reference);
-    date.setDate(reference.getDate() - daysAgo);
-    date.setHours(20, 15, 0, 0);
-
-    return {
-      id: `demo-${localDateKey(date)}`,
-      amountMl: Math.round(
-        (dailyGoal * completionPattern[index % completionPattern.length]) / 10,
-      ) * 10,
-      consumedAt: date.toISOString(),
-      containerId: null,
-      containerName: "示範紀錄",
-      isDemo: true,
-      goalMlAtTime: dailyGoal,
-    };
-  });
-}
-
 export function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case "completeSetup":
@@ -136,17 +107,8 @@ export function appReducer(state: AppState, action: AppAction): AppState {
           (container) => container.id !== action.id,
         ),
       };
-    case "setDemoData":
-      return {
-        ...state,
-        demoEnabled: action.enabled,
-        records: action.enabled
-          ? [
-              ...state.records.filter((record) => !record.isDemo),
-              ...action.records,
-            ]
-          : state.records.filter((record) => !record.isDemo),
-      };
+    case "setLanguage":
+      return { ...state, language: action.language };
     case "updateReminderSettings":
       return { ...state, reminderSettings: action.settings };
     case "hydrate":

@@ -21,7 +21,7 @@ const savedState: AppState = {
   },
   containers: [{ id: "bottle", name: "水壺", volumeMl: 600 }],
   records: [],
-  demoEnabled: false,
+  language: "zh-TW",
   reminderSettings: defaultReminderSettings,
 };
 
@@ -71,6 +71,32 @@ describe("IndexedDB persistence", () => {
   it("載入舊格式時補上預設提醒設定且保留原資料", async () => {
     const legacyState: Record<string, unknown> = { ...savedState };
     delete legacyState.reminderSettings;
+    const database = await openDatabase();
+    const transaction = database.transaction("app-state", "readwrite");
+    transaction.objectStore("app-state").put({
+      key: "current",
+      value: legacyState,
+    });
+    await new Promise<void>((resolve) => {
+      transaction.oncomplete = () => resolve();
+    });
+    database.close();
+
+    expect(await loadAppState()).toEqual(savedState);
+  });
+
+  it("載入舊格式時補上繁體中文並移除示範紀錄", async () => {
+    const legacyState: Record<string, unknown> = {
+      ...savedState,
+      demoEnabled: true,
+      records: [
+        {
+          ...record("demo", new Date().toISOString()),
+          isDemo: true,
+        },
+      ],
+    };
+    delete legacyState.language;
     const database = await openDatabase();
     const transaction = database.transaction("app-state", "readwrite");
     transaction.objectStore("app-state").put({

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { translate, type TranslationKey } from "./i18n";
 import type {
   CloudReminders,
   GeneratedInvite,
@@ -19,7 +20,7 @@ import {
   getSupabaseClient,
   isCloudConfigured,
 } from "./supabaseClient";
-import type { ReminderSettings } from "./types";
+import type { AppLanguage, ReminderSettings } from "./types";
 
 type FunctionErrorPayload = {
   error?: { code?: string; message?: string };
@@ -28,12 +29,15 @@ type FunctionErrorPayload = {
 async function functionErrorMessage(
   error: unknown,
   fallback: string,
+  language: AppLanguage,
 ): Promise<string> {
   const context = (error as { context?: unknown })?.context;
   if (context instanceof Response) {
     try {
       const payload = await context.clone().json() as FunctionErrorPayload;
-      if (payload.error?.message) return payload.error.message;
+      if (payload.error?.message && language === "zh-TW") {
+        return payload.error.message;
+      }
     } catch {
       // Use the stable reader-facing fallback below.
     }
@@ -51,10 +55,16 @@ async function browserSubscription(): Promise<PushSubscription | null> {
 export function useCloudReminders({
   isInstalled,
   isOnline,
+  language,
 }: {
   isInstalled: boolean;
   isOnline: boolean;
+  language: AppLanguage;
 }): CloudReminders {
+  const t = useCallback(
+    (key: TranslationKey) => translate(language, key),
+    [language],
+  );
   const [loading, setLoading] = useState(isCloudConfigured);
   const [busy, setBusy] = useState(false);
   const [membershipRole, setMembershipRole] =
@@ -148,11 +158,11 @@ export function useCloudReminders({
       );
     } catch {
       setSubscriptionActive(false);
-      setError("暫時無法讀取雲端提醒狀態。");
+      setError(t("cloud.readFailed"));
     } finally {
       setLoading(false);
     }
-  }, [isOnline]);
+  }, [isOnline, t]);
 
   useEffect(() => {
     void refresh();
@@ -161,9 +171,9 @@ export function useCloudReminders({
   const redeemInvite = useCallback(
     async (code: string, captchaToken: string) => {
       const supabase = getSupabaseClient();
-      if (!supabase) throw new Error("雲端提醒尚未設定完成。");
-      if (!isOnline) throw new Error("請先連上網路再兌換邀請碼。");
-      if (!captchaToken) throw new Error("請先完成安全驗證。");
+      if (!supabase) throw new Error(t("cloud.notConfigured"));
+      if (!isOnline) throw new Error(t("cloud.onlineToRedeem"));
+      if (!captchaToken) throw new Error(t("cloud.completeSecurity"));
 
       setBusy(true);
       setError(null);
@@ -175,7 +185,7 @@ export function useCloudReminders({
           const { error: signInError } = await supabase.auth.signInAnonymously({
             options: { captchaToken },
           });
-          if (signInError) throw new Error("無法建立這台裝置的身分。");
+          if (signInError) throw new Error(t("cloud.identityFailed"));
         }
 
         const { data, error: redeemError } =
@@ -184,30 +194,34 @@ export function useCloudReminders({
           });
         if (redeemError) {
           throw new Error(
-            await functionErrorMessage(redeemError, "無法兌換邀請碼。"),
+            await functionErrorMessage(
+              redeemError,
+              t("cloud.redeemFailed"),
+              language,
+            ),
           );
         }
         const role = data?.membership?.role;
         if (role !== "owner" && role !== "member") {
-          throw new Error("伺服器沒有回傳有效的成員身分。");
+          throw new Error(t("cloud.invalidRole"));
         }
         setMembershipRole(role);
       } catch (caught) {
         const message =
-          caught instanceof Error ? caught.message : "無法兌換邀請碼。";
+          caught instanceof Error ? caught.message : t("cloud.redeemFailed");
         setError(message);
         throw new Error(message);
       } finally {
         setBusy(false);
       }
     },
-    [isOnline],
+    [isOnline, language, t],
   );
 
   const createInvite = useCallback(async (): Promise<GeneratedInvite> => {
     const supabase = getSupabaseClient();
-    if (!supabase) throw new Error("雲端提醒尚未設定完成。");
-    if (!isOnline) throw new Error("請先連上網路再產生邀請碼。");
+    if (!supabase) throw new Error(t("cloud.notConfigured"));
+    if (!isOnline) throw new Error(t("cloud.onlineToCreate"));
     setBusy(true);
     setError(null);
     try {
@@ -215,40 +229,48 @@ export function useCloudReminders({
         await supabase.functions.invoke("create-invite", { body: {} });
       if (inviteError) {
         throw new Error(
-          await functionErrorMessage(inviteError, "無法產生邀請碼。"),
+          await functionErrorMessage(
+            inviteError,
+            t("cloud.createFailed"),
+            language,
+          ),
         );
       }
       if (
         typeof data?.code !== "string" ||
         typeof data?.expiresAt !== "string"
       ) {
-        throw new Error("伺服器沒有回傳有效的邀請碼。");
+        throw new Error(t("cloud.invalidInvite"));
       }
       const invite = { code: data.code, expiresAt: data.expiresAt };
       setGeneratedInvite(invite);
       return invite;
     } catch (caught) {
       const message =
-        caught instanceof Error ? caught.message : "無法產生邀請碼。";
+        caught instanceof Error ? caught.message : t("cloud.createFailed");
       setError(message);
       throw new Error(message);
     } finally {
       setBusy(false);
     }
-  }, [isOnline]);
+  }, [isOnline, language, t]);
 
   const syncSettings = useCallback(
     async (settings: ReminderSettings) => {
       const supabase = getSupabaseClient();
-      if (!supabase) throw new Error("雲端提醒尚未設定完成。");
-      if (!isOnline) throw new Error("請先連上網路再同步提醒設定。");
+      if (!supabase) throw new Error(t("cloud.notConfigured"));
+      if (!isOnline) throw new Error(t("cloud.onlineToSync"));
       const { data, error: syncError } = await supabase.functions.invoke(
         "sync-reminder-settings",
         { body: reminderSettingsPayload(settings) },
       );
       if (syncError) {
         throw new Error(
-          await functionErrorMessage(syncError, "無法同步提醒設定。"),
+          await functionErrorMessage(
+            syncError,
+            t("cloud.syncFailed"),
+            language,
+          ),
         );
       }
       setNextReminderAt(
@@ -257,20 +279,20 @@ export function useCloudReminders({
           : null,
       );
     },
-    [isOnline],
+    [isOnline, language, t],
   );
 
   const registerBrowserPush = useCallback(async () => {
     const supabase = getSupabaseClient();
-    if (!supabase) throw new Error("雲端提醒尚未設定完成。");
+    if (!supabase) throw new Error(t("cloud.notConfigured"));
     if (!supportsWebPush()) {
-      throw new Error("這個瀏覽器不支援系統通知。");
+      throw new Error(t("cloud.unsupported"));
     }
     const iosDevice =
       /iPad|iPhone|iPod/.test(navigator.userAgent) ||
       (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     if (iosDevice && !isInstalled) {
-      throw new Error("請先用 Safari 將 App 加入主畫面，再從主畫面開啟。");
+      throw new Error(t("cloud.installFirst"));
     }
 
     let permission = Notification.permission;
@@ -281,15 +303,15 @@ export function useCloudReminders({
     if (permission !== "granted") {
       throw new Error(
         permission === "denied"
-          ? "通知權限已被拒絕，請到裝置設定中重新允許。"
-          : "必須允許通知才能開啟提醒。",
+          ? t("cloud.permissionDenied")
+          : t("cloud.permissionRequired"),
       );
     }
 
     const registration = await navigator.serviceWorker.getRegistration();
     if (!registration) {
       throw new Error(
-        "Service Worker 尚未就緒，請使用 production 版本並重新開啟 App。",
+        t("cloud.workerNotReady"),
       );
     }
     let existing = await registration.pushManager.getSubscription();
@@ -302,7 +324,7 @@ export function useCloudReminders({
     ) {
       const removed = await existing.unsubscribe();
       if (!removed) {
-        throw new Error("無法更新這台裝置的推播金鑰，請重新開啟 App 後再試。");
+        throw new Error(t("cloud.keyUpdateFailed"));
       }
       existing = null;
     }
@@ -321,11 +343,15 @@ export function useCloudReminders({
     );
     if (registerError) {
       throw new Error(
-        await functionErrorMessage(registerError, "無法登記這台裝置。"),
+        await functionErrorMessage(
+          registerError,
+          t("cloud.registerFailed"),
+          language,
+        ),
       );
     }
     setSubscriptionActive(true);
-  }, [isInstalled]);
+  }, [isInstalled, language, t]);
 
   const runBusy = useCallback(async (operation: () => Promise<void>) => {
     setBusy(true);
@@ -334,57 +360,57 @@ export function useCloudReminders({
       await operation();
     } catch (caught) {
       const message =
-        caught instanceof Error ? caught.message : "雲端提醒操作失敗。";
+        caught instanceof Error ? caught.message : t("cloud.operationFailed");
       setError(message);
       throw new Error(message);
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [t]);
 
   const enableReminders = useCallback(
     (settings: ReminderSettings) =>
       runBusy(async () => {
-        if (!membershipRole) throw new Error("請先輸入有效邀請碼。");
+        if (!membershipRole) throw new Error(t("cloud.inviteRequired"));
         await registerBrowserPush();
         await syncSettings({ ...settings, enabled: true });
       }),
-    [membershipRole, registerBrowserPush, runBusy, syncSettings],
+    [membershipRole, registerBrowserPush, runBusy, syncSettings, t],
   );
 
   const disableReminders = useCallback(
     (settings: ReminderSettings) =>
       runBusy(async () => {
-        if (!membershipRole) throw new Error("請先輸入有效邀請碼。");
+        if (!membershipRole) throw new Error(t("cloud.inviteRequired"));
         await syncSettings({ ...settings, enabled: false });
       }),
-    [membershipRole, runBusy, syncSettings],
+    [membershipRole, runBusy, syncSettings, t],
   );
 
   const saveReminderSettings = useCallback(
     (settings: ReminderSettings) =>
       runBusy(async () => {
-        if (!membershipRole) throw new Error("請先輸入有效邀請碼。");
+        if (!membershipRole) throw new Error(t("cloud.inviteRequired"));
         await syncSettings(settings);
       }),
-    [membershipRole, runBusy, syncSettings],
+    [membershipRole, runBusy, syncSettings, t],
   );
 
   const testReminder = useCallback(
     () =>
       runBusy(async () => {
         const supabase = getSupabaseClient();
-        if (!supabase) throw new Error("雲端提醒尚未設定完成。");
-        if (!isOnline) throw new Error("請先連上網路再測試通知。");
-        if (!membershipRole) throw new Error("請先輸入有效邀請碼。");
+        if (!supabase) throw new Error(t("cloud.notConfigured"));
+        if (!isOnline) throw new Error(t("cloud.onlineToTest"));
+        if (!membershipRole) throw new Error(t("cloud.inviteRequired"));
         if (notificationPermission !== "granted") {
-          throw new Error("請先允許這台裝置接收通知。");
+          throw new Error(t("cloud.allowNotifications"));
         }
 
         const subscription = await browserSubscription();
         if (!subscription) {
           setSubscriptionActive(false);
-          throw new Error("找不到這台裝置的推播訂閱，請重新開啟提醒。");
+          throw new Error(t("cloud.subscriptionMissing"));
         }
 
         const { data, error: testError } = await supabase.functions.invoke(
@@ -393,11 +419,15 @@ export function useCloudReminders({
         );
         if (testError) {
           throw new Error(
-            await functionErrorMessage(testError, "測試通知傳送失敗。"),
+            await functionErrorMessage(
+              testError,
+              t("cloud.testFailed"),
+              language,
+            ),
           );
         }
         if (data?.sent !== true) {
-          throw new Error("伺服器沒有確認測試通知已送出。");
+          throw new Error(t("cloud.testUnconfirmed"));
         }
       }),
     [
@@ -405,6 +435,8 @@ export function useCloudReminders({
       membershipRole,
       notificationPermission,
       runBusy,
+      language,
+      t,
     ],
   );
 
@@ -452,13 +484,14 @@ export function useCloudReminders({
         throw new Error(
           await functionErrorMessage(
             disableError,
-            "無法移除伺服器推播訂閱。",
+            t("cloud.serverRemovalFailed"),
+            language,
           ),
         );
       }
       const subscription = await browserSubscription();
       if (subscription && !await subscription.unsubscribe()) {
-        throw new Error("無法解除瀏覽器推播訂閱。");
+        throw new Error(t("cloud.browserRemovalFailed"));
       }
       const { error: signOutError } = await supabase.auth.signOut({
         scope: "local",
@@ -473,11 +506,11 @@ export function useCloudReminders({
     } catch {
       scheduleCloudCleanup();
       setCloudCleanupPending(true);
-      setError("本機資料已清除；雲端提醒解除失敗，稍後會自動重試。");
+      setError(t("cloud.cleanupFailed"));
     } finally {
       setBusy(false);
     }
-  }, [isOnline]);
+  }, [isOnline, language, t]);
 
   useEffect(() => {
     if (!isOnline || loading || !hasPendingCloudCleanup()) return;

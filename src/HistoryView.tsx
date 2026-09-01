@@ -1,12 +1,9 @@
+import { useMemo } from "react";
 import { getDailyGoal, localDateKey } from "./appState";
+import { useI18n } from "./i18n";
 import type { AppState } from "./types";
 
 type HistoryViewProps = { state: AppState };
-
-const compactDate = new Intl.DateTimeFormat("zh-TW", {
-  month: "numeric",
-  day: "numeric",
-});
 
 function buildSevenDays(state: AppState) {
   const today = new Date();
@@ -35,6 +32,11 @@ function buildSevenDays(state: AppState) {
 }
 
 export default function HistoryView({ state }: HistoryViewProps) {
+  const { locale, t } = useI18n();
+  const compactDate = useMemo(
+    () => new Intl.DateTimeFormat(locale, { month: "numeric", day: "numeric" }),
+    [locale],
+  );
   const dailyGoal = getDailyGoal(state.profile!);
   const days = buildSevenDays(state);
   const activeDays = days.filter((day) => day.total > 0);
@@ -58,28 +60,27 @@ export default function HistoryView({ state }: HistoryViewProps) {
     <div className="view-shell history-view">
       <header className="app-header">
         <div>
-          <p className="overline">Last 7 days</p>
-          <h1>喝水趨勢</h1>
+          <p className="overline">{t("history.eyebrow")}</p>
+          <h1>{t("history.heading")}</h1>
         </div>
-        {state.demoEnabled ? <span className="demo-badge">示範資料</span> : null}
       </header>
 
-      <section className="history-summary" aria-label="7 天喝水摘要">
-        <article><span>七日日均</span><strong>{average.toLocaleString()} <small>mL</small></strong></article>
-        <article><span>達標天數</span><strong>{completedDays} <small>天</small></strong></article>
-        <article><span>目前連續</span><strong>{streak} <small>天</small></strong></article>
+      <section className="history-summary" aria-label={t("history.summaryAria")}>
+        <article><span>{t("history.average")}</span><strong>{average.toLocaleString(locale)} <small>mL</small></strong></article>
+        <article><span>{t("history.completedDays")}</span><strong>{completedDays} <small>{t("history.daysUnit")}</small></strong></article>
+        <article><span>{t("history.currentStreak")}</span><strong>{streak} <small>{t("history.daysUnit")}</small></strong></article>
       </section>
 
       <section className="chart-card" aria-labelledby="chart-title">
         <div className="section-title-row">
           <div>
-            <p className="overline">Overview</p>
-            <h2 id="chart-title">每日飲水量</h2>
+            <p className="overline">{t("history.overview")}</p>
+            <h2 id="chart-title">{t("history.dailyAmount")}</h2>
           </div>
-          <span className="goal-legend"><i /> 今日目標 {dailyGoal.toLocaleString()}</span>
+          <span className="goal-legend"><i /> {t("history.goalLegend", { amount: dailyGoal.toLocaleString(locale) })}</span>
         </div>
 
-        <div className="chart-scroll" role="img" aria-label={`最近 7 天飲水圖表，共 ${completedDays} 天達標`}>
+        <div className="chart-scroll" role="img" aria-label={t("history.chartAria", { count: completedDays })}>
           <svg className="history-chart seven-day-chart" viewBox="0 0 560 190" preserveAspectRatio="none">
             <line className="target-line" x1="24" x2="536" y1={150 - (dailyGoal / maxValue) * chartHeight} y2={150 - (dailyGoal / maxValue) * chartHeight} />
             {days.map((day, index) => {
@@ -95,7 +96,7 @@ export default function HistoryView({ state }: HistoryViewProps) {
                     rx="10"
                   />
                   <text x={57 + index * 72} y="177" textAnchor="middle">
-                    {index === 6 ? "今天" : compactDate.format(day.date)}
+                    {index === 6 ? t("common.today") : compactDate.format(day.date)}
                   </text>
                 </g>
               );
@@ -106,22 +107,22 @@ export default function HistoryView({ state }: HistoryViewProps) {
 
       <section className="content-section recent-days" aria-labelledby="recent-days-title">
         <div className="section-title-row">
-          <div><p className="overline">Daily details</p><h2 id="recent-days-title">最近七天</h2></div>
+          <div><p className="overline">{t("history.details")}</p><h2 id="recent-days-title">{t("history.recentDays")}</h2></div>
         </div>
         <ul className="day-list">
           {days.slice().reverse().map((day, index) => {
             const ratio = Math.min((day.total / day.goal) * 100, 100);
             return (
               <li key={day.key}>
-                <div className="day-label"><strong>{index === 0 ? "今天" : compactDate.format(day.date)}</strong><small>{day.total >= day.goal ? "已達標" : day.total ? "繼續保持" : "尚無紀錄"}</small></div>
+                <div className="day-label"><strong>{index === 0 ? t("common.today") : compactDate.format(day.date)}</strong><small>{day.total >= day.goal ? t("history.completed") : day.total ? t("history.keepGoing") : t("history.noRecord")}</small></div>
                 <div className="day-progress"><i style={{ width: `${ratio}%` }} /></div>
-                <strong className="day-total">{day.total.toLocaleString()} <small>mL</small></strong>
+                <strong className="day-total">{day.total.toLocaleString(locale)} <small>mL</small></strong>
               </li>
             );
           })}
         </ul>
         {!activeDays.length ? (
-          <p className="inline-empty">目前沒有歷史資料，可到設定開啟示範資料預覽完整圖表。</p>
+          <p className="inline-empty">{t("history.empty")}</p>
         ) : null}
       </section>
     </div>

@@ -7,12 +7,14 @@ import {
 } from "react";
 import type { CloudReminders } from "./cloudTypes";
 import { isCompleteInviteCode, normalizeInviteCode } from "./cloudUtils";
+import { translate, useI18n } from "./i18n";
 import { cloudConfiguration } from "./supabaseClient";
 import TurnstileWidget from "./TurnstileWidget";
 import type {
   AppAction,
   ReminderIntervalMinutes,
   ReminderSettings,
+  AppLanguage,
 } from "./types";
 import type { PwaStatus } from "./usePwaStatus";
 
@@ -44,11 +46,13 @@ function scheduleValid(settings: ReminderSettings): boolean {
 function nextReminderLabel(
   enabled: boolean,
   nextReminderAt: string | null,
+  language: AppLanguage,
+  locale: string,
 ): string {
   if (nextReminderAt) {
     const nextReminder = new Date(nextReminderAt);
-    if (Number.isNaN(nextReminder.getTime())) return "正在重新讀取時間";
-    return nextReminder.toLocaleString("zh-TW", {
+    if (Number.isNaN(nextReminder.getTime())) return translate(language, "reminder.reloadingTime");
+    return nextReminder.toLocaleString(locale, {
       month: "numeric",
       day: "numeric",
       weekday: "short",
@@ -57,7 +61,9 @@ function nextReminderLabel(
       hour12: false,
     });
   }
-  return enabled ? "正在等待伺服器排程" : "提醒目前已關閉";
+  return enabled
+    ? translate(language, "reminder.waitingSchedule")
+    : translate(language, "reminder.offStatus");
 }
 
 function ReminderFields({
@@ -67,11 +73,12 @@ function ReminderFields({
   settings: ReminderSettings;
   onChange: (settings: ReminderSettings) => void;
 }) {
+  const { t } = useI18n();
   return (
     <>
       <div className="field-grid reminder-time-grid">
         <label className="field">
-          <span>每日開始時間</span>
+          <span>{t("reminder.start")}</span>
           <select
             value={settings.startTime}
             onChange={(event) =>
@@ -86,7 +93,7 @@ function ReminderFields({
           </select>
         </label>
         <label className="field">
-          <span>每日結束時間</span>
+          <span>{t("reminder.end")}</span>
           <select
             value={settings.endTime}
             onChange={(event) =>
@@ -101,10 +108,10 @@ function ReminderFields({
           </select>
         </label>
       </div>
-      <div className="reminder-interval-heading">提醒間隔</div>
+      <div className="reminder-interval-heading">{t("reminder.interval")}</div>
       <div
         className="segmented-control settings-segment reminder-interval"
-        aria-label="提醒間隔"
+        aria-label={t("reminder.interval")}
       >
         {([30, 60, 90] as const).map((minutes) => (
           <label
@@ -122,7 +129,7 @@ function ReminderFields({
                 })
               }
             />
-            {minutes} 分鐘
+            {t("common.minutes", { count: minutes })}
           </label>
         ))}
       </div>
@@ -134,19 +141,23 @@ function LocalReminderCard({
   settings,
   dispatch,
 }: Pick<CloudReminderCardProps, "settings" | "dispatch">) {
+  const { t } = useI18n();
   const [draft, setDraft] = useState(settings);
   const [message, setMessage] = useState("");
+  const [messageIsError, setMessageIsError] = useState(false);
 
   useEffect(() => setDraft(settings), [settings]);
 
   function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!scheduleValid(draft)) {
-      setMessage("結束時間必須晚於開始時間，且不能跨越午夜；時間只能選整點或半點。");
+      setMessage(t("reminder.invalidSchedule"));
+      setMessageIsError(true);
       return;
     }
     dispatch({ type: "updateReminderSettings", settings: draft });
-    setMessage("提醒設定已儲存");
+    setMessage(t("reminder.saved"));
+    setMessageIsError(false);
   }
 
   return (
@@ -154,16 +165,17 @@ function LocalReminderCard({
       <div className="settings-heading">
         <span className="settings-icon" aria-hidden="true">◷</span>
         <div>
-          <h2 id="reminder-title">喝水提醒</h2>
-          <p>{settings.enabled ? "已開啟提醒偏好" : "目前已關閉"}</p>
+          <h2 id="reminder-title">{t("reminder.title")}</h2>
+          <p>{settings.enabled ? t("reminder.enabledPreference") : t("reminder.off")}</p>
         </div>
         <label className="switch">
           <input
-            aria-label="切換喝水提醒"
+            aria-label={t("reminder.toggleAria")}
             type="checkbox"
             checked={settings.enabled}
             onChange={(event) => {
               setMessage("");
+              setMessageIsError(false);
               dispatch({
                 type: "updateReminderSettings",
                 settings: { ...settings, enabled: event.target.checked },
@@ -180,28 +192,32 @@ function LocalReminderCard({
             onChange={(next) => {
               setDraft(next);
               setMessage("");
+              setMessageIsError(false);
             }}
           />
           <div className="settings-save-row">
             <span
-              className={message.includes("已儲存") ? "success-message" : "form-error"}
-              role={message && !message.includes("已儲存") ? "alert" : "status"}
+              className={messageIsError ? "form-error" : "success-message"}
+              role={messageIsError ? "alert" : "status"}
             >
               {message}
             </span>
             <button className="secondary-button" type="submit">
-              儲存提醒設定
+              {t("reminder.save")}
             </button>
           </div>
         </form>
       ) : (
         <p className="reminder-summary">
-          目前保存：每天 {settings.startTime}–{settings.endTime}，每{" "}
-          {settings.intervalMinutes} 分鐘。
+          {t("reminder.localSummary", {
+            start: settings.startTime,
+            end: settings.endTime,
+            minutes: settings.intervalMinutes,
+          })}
         </p>
       )}
       <p className="reminder-notice">
-        尚未設定 Supabase 與 Web Push；目前只保存本機提醒偏好。
+        {t("reminder.localNotice")}
       </p>
     </section>
   );
@@ -213,10 +229,12 @@ export default function CloudReminderCard({
   cloud,
   pwa,
 }: CloudReminderCardProps) {
+  const { language, locale, t } = useI18n();
   const [draft, setDraft] = useState(settings);
   const [inviteCode, setInviteCode] = useState("");
   const [captchaToken, setCaptchaToken] = useState("");
   const [message, setMessage] = useState("");
+  const [messageIsError, setMessageIsError] = useState(false);
 
   useEffect(() => setDraft(settings), [settings]);
 
@@ -225,6 +243,7 @@ export default function CloudReminderCard({
   }, []);
   const handleCaptchaError = useCallback((nextMessage: string) => {
     setMessage(nextMessage);
+    setMessageIsError(true);
   }, []);
 
   if (!cloud.configured) {
@@ -234,13 +253,15 @@ export default function CloudReminderCard({
   async function redeem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!isCompleteInviteCode(inviteCode)) {
-      setMessage("請輸入完整的 20 碼邀請碼。");
+      setMessage(t("reminder.inviteIncomplete"));
+      setMessageIsError(true);
       return;
     }
     setMessage("");
+    setMessageIsError(false);
     try {
       await cloud.redeemInvite(inviteCode, captchaToken);
-      setMessage("這台裝置已成功加入");
+      setMessage(t("reminder.joined"));
       setInviteCode("");
       setCaptchaToken("");
     } catch {
@@ -250,13 +271,14 @@ export default function CloudReminderCard({
 
   async function enable() {
     setMessage("");
+    setMessageIsError(false);
     try {
       await cloud.enableReminders({ ...draft, enabled: true });
       dispatch({
         type: "updateReminderSettings",
         settings: { ...draft, enabled: true },
       });
-      setMessage("系統提醒已開啟");
+      setMessage(t("reminder.systemEnabled"));
     } catch {
       // The cloud hook exposes a stable reader-facing error below.
     }
@@ -264,13 +286,14 @@ export default function CloudReminderCard({
 
   async function disable() {
     setMessage("");
+    setMessageIsError(false);
     try {
       await cloud.disableReminders({ ...draft, enabled: false });
       dispatch({
         type: "updateReminderSettings",
         settings: { ...draft, enabled: false },
       });
-      setMessage("系統提醒已關閉");
+      setMessage(t("reminder.systemDisabled"));
     } catch {
       // The cloud hook exposes a stable reader-facing error below.
     }
@@ -279,14 +302,16 @@ export default function CloudReminderCard({
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!scheduleValid(draft)) {
-      setMessage("結束時間必須晚於開始時間，且不能跨越午夜；時間只能選整點或半點。");
+      setMessage(t("reminder.invalidSchedule"));
+      setMessageIsError(true);
       return;
     }
     setMessage("");
+    setMessageIsError(false);
     try {
       await cloud.saveReminderSettings(draft);
       dispatch({ type: "updateReminderSettings", settings: draft });
-      setMessage("提醒設定已同步");
+      setMessage(t("reminder.synced"));
     } catch {
       // The cloud hook exposes a stable reader-facing error below.
     }
@@ -294,6 +319,7 @@ export default function CloudReminderCard({
 
   async function createInvite() {
     setMessage("");
+    setMessageIsError(false);
     try {
       await cloud.createInvite();
     } catch {
@@ -303,9 +329,10 @@ export default function CloudReminderCard({
 
   async function testReminder() {
     setMessage("");
+    setMessageIsError(false);
     try {
       await cloud.testReminder();
-      setMessage("測試通知已送出，請查看通知中心");
+      setMessage(t("reminder.testSent"));
     } catch {
       // The cloud hook exposes a stable reader-facing error below.
     }
@@ -315,19 +342,15 @@ export default function CloudReminderCard({
     if (!cloud.generatedInvite) return;
     try {
       await navigator.clipboard.writeText(cloud.generatedInvite.code);
-      setMessage("邀請碼已複製");
+      setMessage(t("reminder.inviteCopied"));
+      setMessageIsError(false);
     } catch {
-      setMessage("無法自動複製，請長按邀請碼複製。");
+      setMessage(t("reminder.copyFailed"));
+      setMessageIsError(true);
     }
   }
 
-  const displayedError = cloud.error ?? (
-    message.includes("失敗") ||
-    message.includes("無法") ||
-    message.includes("請")
-      ? message
-      : ""
-  );
+  const displayedError = cloud.error ?? (messageIsError ? message : "");
   const installedRequired =
     !pwa.isInstalled &&
     (pwa.installMode === "ios-safari" || pwa.installMode === "ios-other");
@@ -337,19 +360,19 @@ export default function CloudReminderCard({
       <div className="settings-heading">
         <span className="settings-icon" aria-hidden="true">◷</span>
         <div>
-          <h2 id="reminder-title">喝水提醒</h2>
+          <h2 id="reminder-title">{t("reminder.title")}</h2>
           <p>
             {cloud.loading
-              ? "正在確認裝置身分…"
+              ? t("reminder.checkingIdentity")
               : cloud.membershipRole
-                ? `${cloud.membershipRole === "owner" ? "Owner" : "成員"}裝置`
-                : "需要邀請碼"}
+                ? t(cloud.membershipRole === "owner" ? "reminder.ownerDevice" : "reminder.memberDevice")
+                : t("reminder.inviteRequired")}
           </p>
         </div>
         {cloud.membershipRole && cloud.subscriptionActive ? (
           <label className="switch">
             <input
-              aria-label="切換喝水提醒"
+              aria-label={t("reminder.toggleAria")}
               type="checkbox"
               checked={settings.enabled}
               disabled={cloud.busy}
@@ -361,14 +384,14 @@ export default function CloudReminderCard({
       </div>
 
       {cloud.loading ? (
-        <p className="reminder-summary" role="status">正在讀取雲端狀態…</p>
+        <p className="reminder-summary" role="status">{t("reminder.loadingCloud")}</p>
       ) : !cloud.membershipRole ? (
         <form className="invite-redeem-form" onSubmit={redeem}>
           <p className="reminder-summary">
-            每組邀請碼只能使用一次，成功後身分會綁定這台裝置。
+            {t("reminder.inviteOnce")}
           </p>
           <label className="field full-width">
-            <span>邀請碼</span>
+            <span>{t("reminder.inviteCode")}</span>
             <input
               autoCapitalize="characters"
               autoComplete="off"
@@ -380,6 +403,7 @@ export default function CloudReminderCard({
               onChange={(event) => {
                 setInviteCode(normalizeInviteCode(event.target.value));
                 setMessage("");
+                setMessageIsError(false);
                 cloud.clearError();
               }}
             />
@@ -398,25 +422,25 @@ export default function CloudReminderCard({
             }
             type="submit"
           >
-            {cloud.busy ? "正在驗證…" : "使用邀請碼加入"}
+            {cloud.busy ? t("reminder.verifying") : t("reminder.join")}
           </button>
         </form>
       ) : (
         <>
           {installedRequired ? (
             <div className="cloud-step-card">
-              <strong>先安裝到 iPhone 主畫面</strong>
+              <strong>{t("reminder.installIphone")}</strong>
               <p>
                 {pwa.installMode === "ios-safari"
-                  ? "點 Safari 分享按鈕，再選擇「加入主畫面」，並從新圖示開啟。"
-                  : "請先改用 Safari 開啟，再從分享選單加入主畫面。"}
+                  ? t("reminder.iosSafariInstall")
+                  : t("reminder.iosOtherInstall")}
               </p>
             </div>
           ) : !cloud.subscriptionActive ? (
             <div className="cloud-step-card">
-              <strong>允許這台裝置接收通知</strong>
+              <strong>{t("reminder.allowTitle")}</strong>
               <p>
-                權限只會在你按下按鈕後詢問；拒絕後需到裝置設定重新允許。
+                {t("reminder.allowBody")}
               </p>
               <button
                 className="secondary-button"
@@ -424,7 +448,7 @@ export default function CloudReminderCard({
                 type="button"
                 onClick={() => void enable()}
               >
-                {cloud.busy ? "正在連接…" : "允許通知並開啟提醒"}
+                {cloud.busy ? t("reminder.connecting") : t("reminder.allowButton")}
               </button>
             </div>
           ) : null}
@@ -435,6 +459,7 @@ export default function CloudReminderCard({
               onChange={(next) => {
                 setDraft(next);
                 setMessage("");
+                setMessageIsError(false);
                 cloud.clearError();
               }}
             />
@@ -450,15 +475,15 @@ export default function CloudReminderCard({
                 disabled={cloud.busy || !scheduleValid(draft)}
                 type="submit"
               >
-                儲存並同步
+                {t("reminder.saveSync")}
               </button>
             </div>
           </form>
 
           <div className="reminder-delivery-row">
             <div>
-              <strong>下次通知時間</strong>
-              <p>{nextReminderLabel(settings.enabled, cloud.nextReminderAt)}</p>
+              <strong>{t("reminder.nextTime")}</strong>
+              <p>{nextReminderLabel(settings.enabled, cloud.nextReminderAt, language, locale)}</p>
             </div>
             <button
               className="secondary-button"
@@ -470,21 +495,21 @@ export default function CloudReminderCard({
               type="button"
               onClick={() => void testReminder()}
             >
-              {cloud.busy ? "正在處理…" : "測試通知"}
+              {cloud.busy ? t("reminder.processing") : t("reminder.test")}
             </button>
           </div>
 
           <p className="reminder-notice">
             {cloud.notificationPermission === "denied"
-              ? "通知權限已被拒絕，請到裝置的通知設定重新允許。"
-              : `時區：${Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"}。關閉提醒不會移除這台裝置。`}
+              ? t("reminder.permissionDenied")
+              : t("reminder.timezone", { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC" })}
           </p>
 
           {cloud.membershipRole === "owner" ? (
             <div className="owner-invite-panel">
               <div>
-                <strong>邀請其他裝置</strong>
-                <p>新代碼只顯示一次，24 小時後失效。</p>
+                <strong>{t("reminder.inviteOthers")}</strong>
+                <p>{t("reminder.inviteExpiry")}</p>
               </div>
               <button
                 className="text-button"
@@ -492,7 +517,7 @@ export default function CloudReminderCard({
                 type="button"
                 onClick={() => void createInvite()}
               >
-                產生邀請碼
+                {t("reminder.createInvite")}
               </button>
             </div>
           ) : null}
@@ -511,18 +536,18 @@ export default function CloudReminderCard({
           aria-labelledby="generated-invite-title"
         >
           <div>
-            <p className="overline">只顯示這一次</p>
-            <h3 id="generated-invite-title">新的邀請碼</h3>
+            <p className="overline">{t("reminder.once")}</p>
+            <h3 id="generated-invite-title">{t("reminder.newInvite")}</h3>
             <code>{cloud.generatedInvite.code}</code>
             <p>
-              到期：{new Date(cloud.generatedInvite.expiresAt).toLocaleString("zh-TW")}
+              {t("reminder.expires", { time: new Date(cloud.generatedInvite.expiresAt).toLocaleString(locale) })}
             </p>
             <div className="dialog-actions">
               <button className="secondary-button" type="button" onClick={() => void copyInvite()}>
-                複製
+                {t("reminder.copy")}
               </button>
               <button className="primary-button" type="button" onClick={cloud.clearGeneratedInvite}>
-                完成
+                {t("reminder.done")}
               </button>
             </div>
           </div>

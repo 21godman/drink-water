@@ -100,7 +100,7 @@ describe("useCloudReminders subscription reconciliation", () => {
     supabaseMocks.getSupabaseClient.mockReturnValue(supabaseClient(null));
 
     const { result } = renderHook(() =>
-      useCloudReminders({ isInstalled: true, isOnline: false }),
+      useCloudReminders({ isInstalled: true, isOnline: false, language: "zh-TW" }),
     );
 
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -128,7 +128,7 @@ describe("useCloudReminders subscription reconciliation", () => {
       );
 
       const { result } = renderHook(() =>
-        useCloudReminders({ isInstalled: true, isOnline: true }),
+        useCloudReminders({ isInstalled: true, isOnline: true, language: "zh-TW" }),
       );
 
       await waitFor(() => expect(result.current.loading).toBe(false));
@@ -152,7 +152,7 @@ describe("useCloudReminders subscription reconciliation", () => {
     supabaseMocks.getSupabaseClient.mockReturnValue(client);
 
     const { result } = renderHook(() =>
-      useCloudReminders({ isInstalled: true, isOnline: true }),
+      useCloudReminders({ isInstalled: true, isOnline: true, language: "zh-TW" }),
     );
 
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -172,7 +172,7 @@ describe("useCloudReminders subscription reconciliation", () => {
     supabaseMocks.getSupabaseClient.mockReturnValue(client);
 
     const { result } = renderHook(() =>
-      useCloudReminders({ isInstalled: true, isOnline: true }),
+      useCloudReminders({ isInstalled: true, isOnline: true, language: "zh-TW" }),
     );
     await waitFor(() => expect(result.current.loading).toBe(false));
 
@@ -199,7 +199,7 @@ describe("useCloudReminders subscription reconciliation", () => {
 
     const { result, rerender } = renderHook(
       ({ isOnline }) =>
-        useCloudReminders({ isInstalled: true, isOnline }),
+        useCloudReminders({ isInstalled: true, isOnline, language: "zh-TW" }),
       { initialProps: { isOnline: false } },
     );
     await waitFor(() => expect(result.current.loading).toBe(false));

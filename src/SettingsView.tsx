@@ -1,7 +1,8 @@
 import { useEffect, useState, type Dispatch, type FormEvent } from "react";
-import { createDemoRecords, createId, getDailyGoal } from "./appState";
+import { createId, getDailyGoal } from "./appState";
 import CloudReminderCard from "./CloudReminderCard";
 import type { CloudReminders } from "./cloudTypes";
+import { languageOptions, useI18n } from "./i18n";
 import type {
   AppAction,
   AppState,
@@ -31,29 +32,30 @@ export function PwaInstallCard({
   installMode,
   install,
 }: PwaInstallCardProps) {
+  const { t } = useI18n();
   if (!canInstall) return null;
 
   const nativeInstall = installMode === "native";
   const description = nativeInstall
-    ? "安裝後可從手機桌面直接開啟，離線時也能使用。"
+    ? t("install.nativeDescription")
     : installMode === "ios-safari"
-      ? "點 Safari 的分享按鈕，再選擇「加入主畫面」。"
-      : "請先用 Safari 開啟這個頁面，再從分享選單加入主畫面。";
+      ? t("install.iosSafariDescription")
+      : t("install.iosOtherDescription");
 
   return (
     <section className="settings-card install-card" aria-labelledby="install-title">
       <div className="settings-heading">
         <span className="settings-icon" aria-hidden="true">⇩</span>
         <div>
-          <h2 id="install-title">安裝到手機</h2>
-          <p>更快開啟，也能離線使用</p>
+          <h2 id="install-title">{t("install.title")}</h2>
+          <p>{t("install.subtitle")}</p>
         </div>
       </div>
       <div className="install-card-content">
         <p>{description}</p>
         {nativeInstall ? (
           <button className="secondary-button" type="button" onClick={() => void install()}>
-            安裝到裝置
+            {t("install.button")}
           </button>
         ) : null}
       </div>
@@ -72,6 +74,7 @@ function ContainerDialog({
   dispatch: Dispatch<AppAction>;
   onClose: () => void;
 }) {
+  const { t } = useI18n();
   const [name, setName] = useState(container?.name ?? "");
   const [volume, setVolume] = useState(container ? String(container.volumeMl) : "");
   const [error, setError] = useState("");
@@ -80,7 +83,7 @@ function ContainerDialog({
     event.preventDefault();
     const parsedVolume = Number(volume);
     if (!name.trim() || !Number.isFinite(parsedVolume) || parsedVolume <= 0) {
-      setError("請輸入容器名稱與有效容量。");
+      setError(t("container.invalid"));
       return;
     }
 
@@ -105,29 +108,29 @@ function ContainerDialog({
       <section className="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="container-dialog-title">
         <div className="sheet-handle" aria-hidden="true" />
         <div className="sheet-heading">
-          <div><p className="overline">常用容器</p><h2 id="container-dialog-title">{container ? "編輯容器" : "新增容器"}</h2></div>
-          <button className="icon-button" type="button" onClick={onClose} aria-label="關閉容器設定">×</button>
+          <div><p className="overline">{t("container.eyebrow")}</p><h2 id="container-dialog-title">{container ? t("container.editTitle") : t("container.addTitle")}</h2></div>
+          <button className="icon-button" type="button" onClick={onClose} aria-label={t("container.close")}>×</button>
         </div>
         <form onSubmit={handleSubmit}>
-          <label className="field"><span>容器名稱</span><input type="text" value={name} placeholder="例如：辦公室馬克杯" onChange={(event) => setName(event.target.value)} /></label>
-          <label className="field"><span>容量</span><span className="input-with-unit"><input min="1" inputMode="numeric" type="number" value={volume} placeholder="350" onChange={(event) => setVolume(event.target.value)} /><small>mL</small></span></label>
+          <label className="field"><span>{t("container.name")}</span><input type="text" value={name} placeholder={t("container.example")} onChange={(event) => setName(event.target.value)} /></label>
+          <label className="field"><span>{t("container.capacity")}</span><span className="input-with-unit"><input min="1" inputMode="numeric" type="number" value={volume} placeholder="350" onChange={(event) => setVolume(event.target.value)} /><small>mL</small></span></label>
           {error ? <p className="form-error" role="alert">{error}</p> : null}
           <div className="dialog-actions">
             {container ? (
               <button
                 className="danger-button"
                 disabled={!canDelete}
-                title={!canDelete ? "請先新增另一個容器" : undefined}
+                title={!canDelete ? t("container.addFirstTitle") : undefined}
                 type="button"
                 onClick={() => {
                   dispatch({ type: "deleteContainer", id: container.id });
                   onClose();
                 }}
-              >刪除容器</button>
+              >{t("container.delete")}</button>
             ) : <span />}
-            <button className="primary-button" type="submit">{container ? "儲存變更" : "加入容器"}</button>
+            <button className="primary-button" type="submit">{container ? t("common.saveChanges") : t("container.add")}</button>
           </div>
-          {container && !canDelete ? <p className="last-container-note">至少需要保留一個容器，請先新增另一個再刪除。</p> : null}
+          {container && !canDelete ? <p className="last-container-note">{t("container.keepOne")}</p> : null}
         </form>
       </section>
     </div>
@@ -141,12 +144,13 @@ export default function SettingsView({
   pwa,
   cloud,
 }: SettingsViewProps) {
+  const { locale, t } = useI18n();
   const profile = state.profile!;
   const [height, setHeight] = useState(String(profile.heightCm));
   const [weight, setWeight] = useState(String(profile.weightKg));
   const [goalMode, setGoalMode] = useState<UserProfile["goalMode"]>(profile.goalMode);
   const [customGoal, setCustomGoal] = useState(profile.customGoalMl ? String(profile.customGoalMl) : "");
-  const [profileMessage, setProfileMessage] = useState("");
+  const [profileStatus, setProfileStatus] = useState<"invalid" | "updated" | null>(null);
   const [containerDialog, setContainerDialog] = useState<Container | "new" | null>(null);
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [clearError, setClearError] = useState("");
@@ -173,32 +177,32 @@ export default function SettingsView({
   function saveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!draftValid) {
-      setProfileMessage("請輸入有效的身高、體重與每日目標。");
+      setProfileStatus("invalid");
       return;
     }
     dispatch({ type: "updateProfile", profile: draftProfile });
-    setProfileMessage("設定已更新");
+    setProfileStatus("updated");
   }
 
   return (
     <div className="view-shell settings-view">
-      <header className="app-header"><div><p className="overline">Personalize</p><h1>你的設定</h1></div></header>
+      <header className="app-header"><div><p className="overline">{t("settings.eyebrow")}</p><h1>{t("settings.heading")}</h1></div></header>
 
       <section className="settings-card" aria-labelledby="profile-title">
-        <div className="settings-heading"><span className="settings-icon" aria-hidden="true">◎</span><div><h2 id="profile-title">身體資料與目標</h2><p>目前每日目標 {getDailyGoal(profile).toLocaleString()} mL</p></div></div>
+        <div className="settings-heading"><span className="settings-icon" aria-hidden="true">◎</span><div><h2 id="profile-title">{t("settings.profileTitle")}</h2><p>{t("settings.currentGoal", { amount: getDailyGoal(profile).toLocaleString(locale) })}</p></div></div>
         <form onSubmit={saveProfile}>
           <div className="field-grid">
-            <label className="field"><span>身高</span><span className="input-with-unit"><input min="1" type="number" value={height} onChange={(event) => { setHeight(event.target.value); setProfileMessage(""); }} /><small>cm</small></span></label>
-            <label className="field"><span>體重</span><span className="input-with-unit"><input min="1" type="number" value={weight} onChange={(event) => { setWeight(event.target.value); setProfileMessage(""); }} /><small>kg</small></span></label>
+            <label className="field"><span>{t("onboarding.height")}</span><span className="input-with-unit"><input min="1" type="number" value={height} onChange={(event) => { setHeight(event.target.value); setProfileStatus(null); }} /><small>cm</small></span></label>
+            <label className="field"><span>{t("onboarding.weight")}</span><span className="input-with-unit"><input min="1" type="number" value={weight} onChange={(event) => { setWeight(event.target.value); setProfileStatus(null); }} /><small>kg</small></span></label>
           </div>
-          <div className="segmented-control settings-segment" aria-label="每日目標計算方式">
-            <label className={goalMode === "formula" ? "selected" : ""}><input type="radio" name="settings-goal-mode" checked={goalMode === "formula"} onChange={() => { setGoalMode("formula"); setProfileMessage(""); }} />自動計算</label>
-            <label className={goalMode === "custom" ? "selected" : ""}><input type="radio" name="settings-goal-mode" checked={goalMode === "custom"} onChange={() => { setGoalMode("custom"); setProfileMessage(""); }} />自訂目標</label>
+          <div className="segmented-control settings-segment" aria-label={t("onboarding.goalModeAria")}>
+            <label className={goalMode === "formula" ? "selected" : ""}><input type="radio" name="settings-goal-mode" checked={goalMode === "formula"} onChange={() => { setGoalMode("formula"); setProfileStatus(null); }} />{t("onboarding.autoGoal")}</label>
+            <label className={goalMode === "custom" ? "selected" : ""}><input type="radio" name="settings-goal-mode" checked={goalMode === "custom"} onChange={() => { setGoalMode("custom"); setProfileStatus(null); }} />{t("onboarding.customGoal")}</label>
           </div>
-          {goalMode === "custom" ? <label className="field full-width"><span>自訂每日目標</span><span className="input-with-unit"><input min="1" type="number" value={customGoal} onChange={(event) => { setCustomGoal(event.target.value); setProfileMessage(""); }} /><small>mL</small></span></label> : (
-            <div className="formula-note"><span>公式建議值</span><strong>{draftValid ? getDailyGoal(draftProfile).toLocaleString() : "—"} mL</strong><small>（身高＋體重）× 10</small></div>
+          {goalMode === "custom" ? <label className="field full-width"><span>{t("onboarding.customDailyGoal")}</span><span className="input-with-unit"><input min="1" type="number" value={customGoal} onChange={(event) => { setCustomGoal(event.target.value); setProfileStatus(null); }} /><small>mL</small></span></label> : (
+            <div className="formula-note"><span>{t("settings.formulaSuggested")}</span><strong>{draftValid ? getDailyGoal(draftProfile).toLocaleString(locale) : "—"} mL</strong><small>{t("onboarding.formula")}</small></div>
           )}
-          <div className="settings-save-row"><span className={profileMessage.includes("更新") ? "success-message" : "form-error"} role="status">{profileMessage}</span><button className="secondary-button" type="submit">儲存個人設定</button></div>
+          <div className="settings-save-row"><span className={profileStatus === "updated" ? "success-message" : "form-error"} role={profileStatus === "invalid" ? "alert" : "status"}>{profileStatus ? t(profileStatus === "updated" ? "settings.updated" : "settings.invalidProfile") : ""}</span><button className="secondary-button" type="submit">{t("settings.saveProfile")}</button></div>
         </form>
       </section>
 
@@ -210,33 +214,38 @@ export default function SettingsView({
       />
 
       <section className="settings-card" aria-labelledby="containers-title">
-        <div className="settings-heading"><span className="settings-icon" aria-hidden="true">▱</span><div><h2 id="containers-title">常用容器</h2><p>首頁的快速記水按鈕</p></div><button className="small-add-button" type="button" onClick={() => setContainerDialog("new")}>＋ 新增</button></div>
+        <div className="settings-heading"><span className="settings-icon" aria-hidden="true">▱</span><div><h2 id="containers-title">{t("settings.containersTitle")}</h2><p>{t("settings.containersDescription")}</p></div><button className="small-add-button" type="button" onClick={() => setContainerDialog("new")}>{t("settings.add")}</button></div>
         <ul className="settings-container-list">
           {state.containers.map((container, index) => (
             <li key={container.id}>
               <span className={`tiny-vessel vessel-${(index % 3) + 1}`} aria-hidden="true" />
-              <span><strong>{container.name}</strong><small>{container.volumeMl.toLocaleString()} mL</small></span>
-              <button className="text-button" type="button" onClick={() => setContainerDialog(container)} aria-label={`編輯 ${container.name}`}>編輯</button>
+              <span><strong>{container.name}</strong><small>{container.volumeMl.toLocaleString(locale)} mL</small></span>
+              <button className="text-button" type="button" onClick={() => setContainerDialog(container)} aria-label={t("settings.editContainerAria", { name: container.name })}>{t("settings.edit")}</button>
             </li>
           ))}
         </ul>
       </section>
 
-      <section className="settings-card demo-card" aria-labelledby="demo-title">
-        <div className="settings-heading"><span className="settings-icon" aria-hidden="true">⌁</span><div><h2 id="demo-title">7 天示範資料</h2><p>預覽有歷史紀錄時的趨勢圖</p></div>
-          <label className="switch"><input aria-label="切換 7 天示範資料" type="checkbox" checked={state.demoEnabled} onChange={(event) => dispatch({ type: "setDemoData", enabled: event.target.checked, records: event.target.checked ? createDemoRecords(getDailyGoal(profile)) : [] })} /><span aria-hidden="true" /></label>
+      <section className="settings-card language-card" aria-labelledby="language-title">
+        <div className="settings-heading"><span className="settings-icon" aria-hidden="true">文</span><div><h2 id="language-title">{t("settings.languageTitle")}</h2><p>{t("settings.languageDescription")}</p></div></div>
+        <div className="segmented-control settings-segment language-options" aria-label={t("settings.languageAria")}>
+          {languageOptions.map((option) => (
+            <label className={state.language === option.value ? "selected" : ""} key={option.value}>
+              <input type="radio" name="app-language" checked={state.language === option.value} onChange={() => dispatch({ type: "setLanguage", language: option.value })} />
+              {option.label}
+            </label>
+          ))}
         </div>
-        <p className="demo-note">關閉只會移除示範資料，不會影響你在本次使用中新增的紀錄。</p>
       </section>
 
       <PwaInstallCard {...pwa} />
 
       <section className="settings-card data-card" aria-labelledby="local-data-title">
-        <div className="settings-heading"><span className="settings-icon" aria-hidden="true">▤</span><div><h2 id="local-data-title">本機資料</h2><p>設定長期保留，喝水紀錄保留最近 7 天</p></div></div>
+        <div className="settings-heading"><span className="settings-icon" aria-hidden="true">▤</span><div><h2 id="local-data-title">{t("settings.localDataTitle")}</h2><p>{t("settings.localDataDescription")}</p></div></div>
         <p className="data-note">
-          喝水明細只存在這台裝置；雲端只保存提醒身分與推播設定。清除後匿名身分無法復原，owner 需從 Supabase Dashboard 重發。
+          {t("settings.localDataNote")}
         </p>
-        <button className="clear-data-button" type="button" onClick={() => setShowClearDialog(true)}>清除全部本機資料</button>
+        <button className="clear-data-button" type="button" onClick={() => setShowClearDialog(true)}>{t("settings.clearData")}</button>
       </section>
 
       {containerDialog ? <ContainerDialog container={containerDialog === "new" ? null : containerDialog} canDelete={state.containers.length > 1} dispatch={dispatch} onClose={() => setContainerDialog(null)} /> : null}
@@ -247,15 +256,15 @@ export default function SettingsView({
           <section className="bottom-sheet confirmation-sheet" role="alertdialog" aria-modal="true" aria-labelledby="clear-data-title" aria-describedby="clear-data-description">
             <div className="sheet-handle" aria-hidden="true" />
             <div className="sheet-heading">
-              <div><p className="overline danger-overline">無法復原</p><h2 id="clear-data-title">清除全部本機資料？</h2></div>
-              <button className="icon-button" disabled={isClearing} type="button" onClick={() => setShowClearDialog(false)} aria-label="關閉清除資料確認">×</button>
+              <div><p className="overline danger-overline">{t("settings.irreversible")}</p><h2 id="clear-data-title">{t("settings.clearTitle")}</h2></div>
+              <button className="icon-button" disabled={isClearing} type="button" onClick={() => setShowClearDialog(false)} aria-label={t("settings.closeClear")}>×</button>
             </div>
             <p id="clear-data-description" className="confirmation-copy">
-              身體資料、每日目標、所有容器與最近 7 天的喝水紀錄都會永久刪除。雲端提醒裝置會一併解除；離線時將在恢復連線後自動完成。
+              {t("settings.clearDescription")}
             </p>
             {clearError ? <p className="form-error" role="alert">{clearError}</p> : null}
             <div className="confirmation-actions">
-              <button className="secondary-button" disabled={isClearing} type="button" onClick={() => setShowClearDialog(false)}>取消</button>
+              <button className="secondary-button" disabled={isClearing} type="button" onClick={() => setShowClearDialog(false)}>{t("common.cancel")}</button>
               <button
                 className="confirm-danger-button"
                 disabled={isClearing}
@@ -267,12 +276,12 @@ export default function SettingsView({
                     await onClearData();
                     setShowClearDialog(false);
                   } catch (error) {
-                    setClearError(error instanceof Error ? error.message : "無法清除本機資料");
+                    setClearError(error instanceof Error ? error.message : t("settings.clearFallback"));
                   } finally {
                     setIsClearing(false);
                   }
                 }}
-              >{isClearing ? "正在清除…" : "確認清除"}</button>
+              >{isClearing ? t("settings.clearing") : t("settings.confirmClear")}</button>
             </div>
           </section>
         </div>

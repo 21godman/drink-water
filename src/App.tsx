@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import HistoryView from "./HistoryView";
+import { I18nProvider, useI18n } from "./i18n";
 import Onboarding from "./Onboarding";
 import PwaStatusBanner from "./PwaStatusBanner";
 import SettingsView from "./SettingsView";
@@ -9,14 +10,16 @@ import { useCloudReminders } from "./useCloudReminders";
 import { usePersistentAppState } from "./usePersistentAppState";
 import { usePwaStatus } from "./usePwaStatus";
 
-const navigation: Array<{ id: AppView; label: string; icon: string }> = [
-  { id: "today", label: "今日", icon: "⌂" },
-  { id: "history", label: "歷史", icon: "▥" },
-  { id: "settings", label: "設定", icon: "⌁" },
-];
-
-function App() {
-  const pwa = usePwaStatus();
+function AppContent({
+  pwa,
+  persistentState,
+  cloud,
+}: {
+  pwa: ReturnType<typeof usePwaStatus>;
+  persistentState: ReturnType<typeof usePersistentAppState>;
+  cloud: ReturnType<typeof useCloudReminders>;
+}) {
+  const { t } = useI18n();
   const {
     state,
     dispatch,
@@ -25,12 +28,13 @@ function App() {
     retryLoad,
     retrySave,
     clearLocalData,
-  } = usePersistentAppState();
-  const cloud = useCloudReminders({
-    isInstalled: pwa.isInstalled,
-    isOnline: pwa.isOnline,
-  });
+  } = persistentState;
   const [view, setView] = useState<AppView>("today");
+  const navigation: Array<{ id: AppView; label: string; icon: string }> = [
+    { id: "today", label: t("nav.today"), icon: "⌂" },
+    { id: "history", label: t("nav.history"), icon: "▥" },
+    { id: "settings", label: t("nav.settings"), icon: "⌁" },
+  ];
 
   async function clearAllData() {
     const newlyScheduled = cloud.prepareCloudIdentityRemoval();
@@ -52,7 +56,7 @@ function App() {
     return (
       <main className="startup-state" aria-live="polite">
         <span className="startup-drop" aria-hidden="true">水</span>
-        <p>正在讀取本機紀錄…</p>
+        <p>{t("startup.loading")}</p>
       </main>
     );
   }
@@ -61,9 +65,9 @@ function App() {
     return (
       <main className="startup-state startup-error">
         <span className="startup-icon" aria-hidden="true">!</span>
-        <h1>暫時讀不到本機資料</h1>
+        <h1>{t("startup.errorTitle")}</h1>
         <p>{storageError}</p>
-        <button className="primary-button" type="button" onClick={retryLoad}>重新讀取</button>
+        <button className="primary-button" type="button" onClick={retryLoad}>{t("startup.retry")}</button>
       </main>
     );
   }
@@ -110,7 +114,7 @@ function App() {
         ) : null}
       </main>
 
-      <nav className="bottom-nav" aria-label="主要導覽">
+      <nav className="bottom-nav" aria-label={t("nav.aria")}>
         {navigation.map((item) => (
           <button
             aria-current={view === item.id ? "page" : undefined}
@@ -125,6 +129,26 @@ function App() {
         ))}
       </nav>
     </div>
+  );
+}
+
+function App() {
+  const pwa = usePwaStatus();
+  const persistentState = usePersistentAppState();
+  const cloud = useCloudReminders({
+    isInstalled: pwa.isInstalled,
+    isOnline: pwa.isOnline,
+    language: persistentState.state.language,
+  });
+
+  return (
+    <I18nProvider language={persistentState.state.language}>
+      <AppContent
+        pwa={pwa}
+        persistentState={persistentState}
+        cloud={cloud}
+      />
+    </I18nProvider>
   );
 }
 

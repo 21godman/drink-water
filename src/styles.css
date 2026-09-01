@@ -1024,15 +1024,6 @@ select:focus-visible {
 
 /* History */
 
-.demo-badge {
-  padding: 7px 10px;
-  border-radius: 999px;
-  color: var(--primary-dark);
-  background: var(--mint);
-  font-size: 0.66rem;
-  font-weight: 700;
-}
-
 .history-summary {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1230,6 +1221,11 @@ select:focus-visible {
 
 .settings-segment {
   margin: 18px 0 14px;
+}
+
+.language-options {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 0;
 }
 
 .formula-note {
@@ -1540,20 +1536,6 @@ select:focus-visible {
   font-size: 0.68rem;
   font-weight: 600;
   cursor: pointer;
-}
-
-.demo-card .settings-heading {
-  margin-bottom: 16px;
-}
-
-.demo-note {
-  margin: 0;
-  padding: 13px 14px;
-  border-radius: 12px;
-  color: var(--muted);
-  background: var(--soft-surface);
-  font-size: 0.66rem;
-  line-height: 1.55;
 }
 
 .install-card .settings-heading {
