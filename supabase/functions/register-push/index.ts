@@ -9,8 +9,15 @@ import {
   isPushSubscriptionInput,
   safeErrorMessage,
 } from "../_shared/validation.ts";
+import {
+  isNotificationLanguage,
+  type NotificationLanguage,
+} from "../_shared/notification-copy.ts";
 
-type RegisterBody = { subscription?: unknown };
+type RegisterBody = {
+  subscription?: unknown;
+  language?: NotificationLanguage;
+};
 
 Deno.serve(async (request) => {
   const cors = handleCors(request);
@@ -35,6 +42,10 @@ Deno.serve(async (request) => {
     if (!body || !isPushSubscriptionInput(body.subscription)) {
       return errorResponse("invalid_subscription", "推播訂閱格式不正確。");
     }
+    const language = body.language ?? "zh-TW";
+    if (!isNotificationLanguage(language)) {
+      return errorResponse("invalid_language", "通知語系格式不正確。");
+    }
 
     const { endpoint, expirationTime = null, keys } = body.subscription;
     const { data, error } = await admin.rpc("register_push_subscription", {
@@ -43,6 +54,7 @@ Deno.serve(async (request) => {
       subscription_p256dh: keys.p256dh,
       subscription_auth: keys.auth,
       subscription_expiration_time: expirationTime,
+      subscription_language: language,
     });
     if (error) throw error;
     return jsonResponse({ subscriptionId: data });

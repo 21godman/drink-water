@@ -3,6 +3,10 @@ import { handleCors } from "../_shared/cors.ts";
 import { errorResponse, jsonResponse } from "../_shared/http.ts";
 import { createAdminClient } from "../_shared/supabase.ts";
 import { safeErrorMessage } from "../_shared/validation.ts";
+import {
+  notificationMessage,
+  type NotificationLanguage,
+} from "../_shared/notification-copy.ts";
 
 type Delivery = {
   delivery_id: number;
@@ -10,6 +14,7 @@ type Delivery = {
   p256dh: string;
   auth: string;
   attempt_count: number;
+  language: NotificationLanguage;
 };
 
 function requiredEnv(name: string): string {
@@ -86,6 +91,7 @@ Deno.serve(async (request) => {
 
     for (const delivery of deliveries) {
       try {
+        const message = notificationMessage(delivery.language);
         await webpush.sendNotification(
           {
             endpoint: delivery.endpoint,
@@ -95,8 +101,7 @@ Deno.serve(async (request) => {
             },
           },
           JSON.stringify({
-            title: "喝水時間到了",
-            body: "補充一杯水，照顧今天的自己。",
+            ...message,
             url: "./",
             tag: "drink-water-reminder",
           }),

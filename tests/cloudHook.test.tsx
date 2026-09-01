@@ -18,6 +18,11 @@ vi.mock("../src/supabaseClient", () => ({
 }));
 
 function installPushBrowser(subscription: PushSubscription) {
+  if (typeof subscription.toJSON !== "function") {
+    Object.defineProperty(subscription, "toJSON", {
+      value: () => ({ endpoint: subscription.endpoint }),
+    });
+  }
   vi.stubGlobal("Notification", {
     permission: "granted",
     requestPermission: vi.fn(),
@@ -181,8 +186,47 @@ describe("useCloudReminders subscription reconciliation", () => {
     });
 
     expect(client.functions.invoke).toHaveBeenCalledWith("test-reminder", {
-      body: { endpoint: "https://push.example/current-subscription" },
+      body: {
+        endpoint: "https://push.example/current-subscription",
+        language: "zh-TW",
+      },
     });
+  });
+
+  it("PWA 語系改變後會更新推播語系", async () => {
+    const subscription = {
+      endpoint: "https://push.example/current-subscription",
+      options: {
+        applicationServerKey: new Uint8Array([1, 2, 3, 4]).buffer,
+      },
+    } as PushSubscription;
+    const client = supabaseClient(null);
+    installPushBrowser(subscription);
+    supabaseMocks.getSupabaseClient.mockReturnValue(client);
+
+    const initialProps: { language: "zh-TW" | "en" | "th" } = {
+      language: "zh-TW",
+    };
+    const { result, rerender } = renderHook(
+      ({ language }: { language: "zh-TW" | "en" | "th" }) =>
+        useCloudReminders({ isInstalled: true, isOnline: true, language }),
+      { initialProps },
+    );
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    client.functions.invoke.mockClear();
+
+    rerender({ language: "en" });
+
+    await waitFor(() =>
+      expect(client.functions.invoke).toHaveBeenCalledWith("register-push", {
+        body: {
+          subscription: {
+            endpoint: "https://push.example/current-subscription",
+          },
+          language: "en",
+        },
+      })
+    );
   });
 
   it("離線時保留待清理旗標，恢復連線後自動解除雲端身分", async () => {

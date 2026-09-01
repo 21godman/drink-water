@@ -10,8 +10,16 @@ import {
   isPushEndpoint,
   safeErrorMessage,
 } from "../_shared/validation.ts";
+import {
+  isNotificationLanguage,
+  notificationMessage,
+  type NotificationLanguage,
+} from "../_shared/notification-copy.ts";
 
-type TestReminderBody = { endpoint?: unknown };
+type TestReminderBody = {
+  endpoint?: unknown;
+  language?: NotificationLanguage;
+};
 
 type PushSubscriptionRow = {
   id: string;
@@ -44,6 +52,10 @@ Deno.serve(async (request) => {
     const endpoint = body?.endpoint;
     if (!isPushEndpoint(endpoint)) {
       return errorResponse("invalid_endpoint", "推播訂閱格式不正確。");
+    }
+    const language = body?.language ?? "zh-TW";
+    if (!isNotificationLanguage(language)) {
+      return errorResponse("invalid_language", "通知語系格式不正確。");
     }
 
     const admin = createAdminClient();
@@ -82,6 +94,7 @@ Deno.serve(async (request) => {
     );
 
     try {
+      const message = notificationMessage(language);
       await webpush.sendNotification(
         {
           endpoint: subscription.endpoint,
@@ -91,8 +104,7 @@ Deno.serve(async (request) => {
           },
         },
         JSON.stringify({
-          title: "測試通知成功",
-          body: "這台裝置可以收到喝水提醒。",
+          ...message,
           url: "./",
           tag: "drink-water-test-reminder",
         }),

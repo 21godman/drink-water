@@ -339,7 +339,7 @@ export function useCloudReminders({
 
     const { error: registerError } = await supabase.functions.invoke(
       "register-push",
-      { body: { subscription: subscription.toJSON() } },
+      { body: { subscription: subscription.toJSON(), language } },
     );
     if (registerError) {
       throw new Error(
@@ -415,7 +415,7 @@ export function useCloudReminders({
 
         const { data, error: testError } = await supabase.functions.invoke(
           "test-reminder",
-          { body: { endpoint: subscription.endpoint } },
+          { body: { endpoint: subscription.endpoint, language } },
         );
         if (testError) {
           throw new Error(
@@ -516,6 +516,43 @@ export function useCloudReminders({
     if (!isOnline || loading || !hasPendingCloudCleanup()) return;
     void removeCloudIdentity();
   }, [isOnline, loading, removeCloudIdentity]);
+
+  useEffect(() => {
+    if (
+      !isOnline ||
+      loading ||
+      !membershipRole ||
+      !subscriptionActive
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      const supabase = getSupabaseClient();
+      const subscription = await browserSubscription();
+      if (!supabase || !subscription) return;
+
+      const { error: registerError } = await supabase.functions.invoke(
+        "register-push",
+        { body: { subscription: subscription.toJSON(), language } },
+      );
+      if (!cancelled && registerError) {
+        setError(t("cloud.registerFailed"));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isOnline,
+    language,
+    loading,
+    membershipRole,
+    subscriptionActive,
+    t,
+  ]);
 
   return {
     configured: isCloudConfigured,
