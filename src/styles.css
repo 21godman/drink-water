@@ -298,6 +298,7 @@ select:focus-visible {
   outline: 0;
 }
 
+.input-frame,
 .input-with-unit {
   position: relative;
   display: block;
