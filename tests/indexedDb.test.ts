@@ -40,6 +40,25 @@ function record(id: string, consumedAt: string): DrinkRecord {
 afterEach(clearAppState);
 
 describe("IndexedDB persistence", () => {
+  it("可讀取已升級至版本 2 的資料庫", async () => {
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open("drink-water", 2);
+      request.onupgradeneeded = () => {
+        if (!request.result.objectStoreNames.contains("app-state")) {
+          request.result.createObjectStore("app-state", { keyPath: "key" });
+        }
+      };
+      request.onsuccess = () => {
+        request.result.close();
+        resolve();
+      };
+      request.onerror = () => reject(request.error);
+    });
+
+    await saveAppState(savedState);
+    expect(await loadAppState()).toEqual(savedState);
+  });
+
   it("保存、讀取與清除完整 AppState", async () => {
     await saveAppState(savedState);
     expect(await loadAppState()).toEqual(savedState);

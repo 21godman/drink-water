@@ -9,7 +9,8 @@ import type {
 } from "./types";
 
 const DATABASE_NAME = "drink-water";
-const DATABASE_VERSION = 1;
+// Older clients use version 1 and must reload before they can write again.
+const DATABASE_VERSION = 2;
 const STORE_NAME = "app-state";
 const STATE_KEY = "current";
 
