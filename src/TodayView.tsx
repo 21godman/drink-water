@@ -75,14 +75,16 @@ function RecordDialog({
         <form onSubmit={handleSubmit} noValidate>
           <label className="field">
             <span>{t("today.amount")}</span>
-            <span className="input-with-unit">
+            <span className="input-frame input-with-unit">
               <input min="1" inputMode="numeric" type="number" value={amount} onChange={(event) => setAmount(event.target.value)} />
               <small>mL</small>
             </span>
           </label>
           <label className="field">
             <span>{t("today.time")}</span>
-            <input min={minDateTime} max={maxDateTime} type="datetime-local" value={consumedAt} onChange={(event) => setConsumedAt(event.target.value)} />
+            <span className="input-frame datetime-input-frame">
+              <input min={minDateTime} max={maxDateTime} type="datetime-local" value={consumedAt} onChange={(event) => setConsumedAt(event.target.value)} />
+            </span>
           </label>
           {error ? <p className="form-error" role="alert">{error}</p> : null}
           <div className="dialog-actions">

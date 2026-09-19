@@ -173,7 +173,12 @@ describe("App drinking flow", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /編輯 藍色水壺 600 mL/ }));
     const dialog = screen.getByRole("dialog", { name: "藍色水壺" });
-    fireEvent.change(within(dialog).getByRole("spinbutton", { name: /飲水量/ }), {
+    const amountInput = within(dialog).getByRole("spinbutton", { name: /飲水量/ });
+    const timeInput = within(dialog).getByLabelText(/飲用時間/);
+    expect(amountInput.parentElement?.classList.contains("input-frame")).toBe(true);
+    expect(timeInput.parentElement?.classList.contains("input-frame")).toBe(true);
+    expect(timeInput.parentElement?.classList.contains("datetime-input-frame")).toBe(true);
+    fireEvent.change(amountInput, {
       target: { value: "450" },
     });
     fireEvent.click(within(dialog).getByRole("button", { name: "儲存變更" }));
