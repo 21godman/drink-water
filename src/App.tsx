@@ -67,7 +67,13 @@ function AppContent({
         <span className="startup-icon" aria-hidden="true">!</span>
         <h1>{t("startup.errorTitle")}</h1>
         <p>{storageError}</p>
-        <button className="primary-button" type="button" onClick={retryLoad}>{t("startup.retry")}</button>
+        {pwa.needRefresh ? (
+          <button className="primary-button" type="button" onClick={() => void pwa.applyUpdate()}>
+            {t("pwa.updateNow")}
+          </button>
+        ) : (
+          <button className="primary-button" type="button" onClick={retryLoad}>{t("startup.retry")}</button>
+        )}
       </main>
     );
   }

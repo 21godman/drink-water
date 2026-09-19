@@ -9,7 +9,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: "prompt",
+      registerType: "autoUpdate",
       manifest: {
         name: "drink-water 喝水記錄",
         short_name: "drink-water",
@@ -41,9 +41,11 @@ export default defineConfig({
         ],
       },
       workbox: {
+        clientsClaim: true,
         globPatterns: ["**/*.{html,js,css,svg,png,ico}"],
         importScripts: ["push-handler.js"],
         navigateFallback: "index.html",
+        skipWaiting: true,
       },
       devOptions: {
         enabled: false,
